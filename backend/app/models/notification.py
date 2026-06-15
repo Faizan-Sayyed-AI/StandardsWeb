@@ -44,10 +44,11 @@ class Notification(AsyncBase):
         nullable=False,
         index=True,
     )
-    # event_type shares the same ENUM as standard_history
+    # event_type shares the same ENUM as standard_history (+ document_uploaded added in M4 migration 0003)
     event_type: Mapped[str] = mapped_column(
         Enum(
-            "new", "updated", "amended", "withdrawn", "replaced", "purchased", "status_change",
+            "new", "updated", "amended", "withdrawn", "replaced",
+            "purchased", "status_change", "document_uploaded",
             name="event_type_enum",
             create_type=False,
         ),

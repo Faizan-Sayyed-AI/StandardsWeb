@@ -8,7 +8,7 @@ are added here in their respective milestones (M2–M6).
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, dashboard, feeds, notifications, standards, users
+from app.api.v1 import auth, dashboard, documents, feeds, notifications, standards, users
 
 router = APIRouter(prefix="/api/v1")
 
@@ -24,5 +24,6 @@ router.include_router(standards.router)
 router.include_router(notifications.router)
 router.include_router(dashboard.router)
 
-# ── M4–M6: remaining routers added in later milestones ────────────────────────
+# ── M4: Document Management ──────────────────────────────────────────────────
+router.include_router(documents.router)
 
