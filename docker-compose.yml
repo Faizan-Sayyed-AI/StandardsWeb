@@ -101,14 +101,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── Frontend (placeholder until M3) ──────────────────────
+  # ── Frontend (React 18 + Vite) ───────────────────────────────
   frontend:
     image: node:20-alpine
     container_name: ists_frontend
     working_dir: /app
-    command: sh -c "sleep infinity"
+    command: sh -c "npm install --frozen-lockfile && npm run dev"
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules     # anonymous volume so container node_modules don't get clobbered
     environment:
       VITE_API_URL: "http://localhost:8000"
 
