@@ -3,20 +3,34 @@ version: "3.9"
 # ============================================================
 # Dev-only overrides — automatically merged with docker-compose.yml
 # by `docker compose up`. Do not use in production.
+#
+# Bind mounts let code + migration changes take effect without
+# rebuilding the image. uvicorn --reload handles app restarts.
 # ============================================================
 
 services:
   web:
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/scripts:/app/scripts
     environment:
       LOG_LEVEL: DEBUG
       ENVIRONMENT: development
 
   worker:
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/scripts:/app/scripts
     environment:
       LOG_LEVEL: DEBUG
       ENVIRONMENT: development
 
   beat:
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
     environment:
       LOG_LEVEL: DEBUG
       ENVIRONMENT: development

@@ -72,6 +72,9 @@ class Standard(AsyncBase):
         nullable=True,
     )
     external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # M2: SHA-256 fingerprint of RSS entry fields used for change detection.
+    # Nullable because standards created before M2 (or manually) have no hash.
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
