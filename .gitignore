@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.env
+*.pyo
+
+# uv
+.uv/
+uv.lock
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/node_modules/
+*.tsbuildinfo
+
+# Docker
+*.tar
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Secrets / local env
+.env
+.env.local
+.env.production
+*.pem
+*.key
+
+# Storage (local dev document files — not committed)
+backend/storage/standards/
+
+# Alembic generated (versions are committed, __pycache__ is not)
+backend/alembic/versions/__pycache__/
+
+# Logs
+*.log
+logs/

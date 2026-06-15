@@ -1,0 +1,119 @@
+version: "3.9"
+
+# ============================================================
+# ISTS — Local Development Docker Compose
+# All 6 services: db, redis, web, worker, beat, frontend
+# ============================================================
+
+services:
+  # ── Data Layer ──────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: ists_db
+    environment:
+      POSTGRES_DB: ists
+      POSTGRES_USER: ists
+      POSTGRES_PASSWORD: ists_dev_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ists -d ists"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ists_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ── API Layer ────────────────────────────────────────────
+  web:
+    build:
+      context: ./backend
+      target: runtime
+    container_name: ists_web
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app          # hot-reload source
+      - ./backend/storage:/app/storage  # local document storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Task Execution Layer ──────────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      target: runtime
+    container_name: ists_worker
+    command: >
+      celery -A app.celery_app worker
+      -Q feeds,notifications,maintenance
+      --loglevel=info
+      --pool=solo
+    env_file: .env
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: ./backend
+      target: runtime
+    container_name: ists_beat
+    command: >
+      celery -A app.celery_app beat
+      --scheduler=celery_sqlalchemy_scheduler.DatabaseScheduler
+      --loglevel=info
+    env_file: .env
+    volumes:
+      - ./backend/app:/app/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Frontend (placeholder until M3) ──────────────────────
+  frontend:
+    image: node:20-alpine
+    container_name: ists_frontend
+    working_dir: /app
+    command: sh -c "sleep infinity"
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: "http://localhost:8000"
+
+volumes:
+  pgdata:
+    name: ists_pgdata
+  redisdata:
+    name: ists_redisdata

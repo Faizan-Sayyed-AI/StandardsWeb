@@ -1,0 +1,22 @@
+version: "3.9"
+
+# ============================================================
+# Dev-only overrides — automatically merged with docker-compose.yml
+# by `docker compose up`. Do not use in production.
+# ============================================================
+
+services:
+  web:
+    environment:
+      LOG_LEVEL: DEBUG
+      ENVIRONMENT: development
+
+  worker:
+    environment:
+      LOG_LEVEL: DEBUG
+      ENVIRONMENT: development
+
+  beat:
+    environment:
+      LOG_LEVEL: DEBUG
+      ENVIRONMENT: development

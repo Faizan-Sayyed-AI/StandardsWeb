@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ists-backend"
+version = "1.0.0"
+description = "ISO Standards Tracking System — FastAPI Backend"
+requires-python = ">=3.12"
+dependencies = [
+    # API framework
+    "fastapi[standard]==0.111.*",
+    "uvicorn[standard]==0.30.*",
+
+    # ORM & database drivers
+    "sqlalchemy[asyncio]==2.0.*",
+    "asyncpg==0.29.*",           # async driver for FastAPI / SQLAlchemy
+    "psycopg2-binary==2.9.*",    # sync driver for Celery Beat DatabaseScheduler
+
+    # Migrations
+    "alembic==1.13.*",
+
+    # Task queue
+    "celery==5.4.*",
+    "celery-sqlalchemy-scheduler==0.3.0",  # DB-backed Beat scheduler
+    "redis==5.*",                           # Celery broker + result backend client
+
+    # HTTP client (for RSS polling tasks in M2)
+    "httpx==0.27.*",
+
+    # RSS parsing (M2)
+    "feedparser==6.0.*",
+
+    # Email (M5 — aiosmtplib used in Celery tasks)
+    "aiosmtplib==3.0.*",
+
+    # Security
+    "bcrypt==4.*",
+        "python-jose[cryptography]==3.3.*",
+
+    # File handling
+    "python-multipart==0.0.*",   # multipart/form-data upload support
+    "python-magic==0.4.*",       # magic-byte file type detection
+
+    # Observability
+    "structlog==24.*",
+
+    # Rate limiting
+    "slowapi==0.1.*",
+
+    # Settings
+    "pydantic-settings==2.*",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.*",
+    "pytest-asyncio==0.23.*",
+    "httpx==0.27.*",   # for TestClient
+    "ruff==0.4.*",
+    "mypy==1.10.*",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["B008"]   # allow function calls in default args (FastAPI Depends pattern)
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
