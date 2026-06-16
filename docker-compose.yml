@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================
 # ISTS — Local Development Docker Compose
 # All 6 services: db, redis, web, worker, beat, frontend

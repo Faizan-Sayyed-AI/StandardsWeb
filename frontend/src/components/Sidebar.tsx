@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
   { label: "Distribution Lists", href: "/admin/distribution-lists", icon: Mail, adminOnly: true },
   { label: "SMTP Settings", href: "/admin/smtp-config", icon: Settings, adminOnly: true },
   { label: "Users", href: "/users", icon: Users, adminOnly: true },
+  { label: "Audit Logs", href: "/admin/audit-logs", icon: Layers, adminOnly: true },
 ];
 
 export function Sidebar() {

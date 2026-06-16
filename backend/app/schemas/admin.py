@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+from typing import Any
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -49,3 +51,29 @@ class NotificationTriggerMappingCreate(BaseModel):
     event_type: str = Field(..., min_length=1)
     list_id: uuid.UUID
     notify_all_users: bool = False
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    actor_id: uuid.UUID | None
+    actor_username: str | None = None
+    action: str
+    resource_type: str
+    resource_id: uuid.UUID | None = None
+    payload: dict[str, Any] | None = None
+    ip_address: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class QueueDepths(BaseModel):
+    feeds: int
+    notifications: int
+    maintenance: int
+
+
+class WorkerStatusResponse(BaseModel):
+    status: str
+    queues: QueueDepths
+

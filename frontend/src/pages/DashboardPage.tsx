@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getDashboardStats } from "@/api/dashboard";
 import { listStandards } from "@/api/standards";
+import { getWorkerStatus } from "@/api/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/badge";
@@ -60,7 +61,7 @@ function StatCard({
 }
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const { data: stats } = useQuery({
     queryKey: ["dashboard", "stats"],
@@ -70,6 +71,13 @@ export function DashboardPage() {
   const { data: recentStandards } = useQuery({
     queryKey: ["standards", "recent"],
     queryFn: () => listStandards({ page: 1, page_size: 8, sort_by: "updated_at", sort_order: "desc" }),
+  });
+
+  const { data: workerStatus } = useQuery({
+    queryKey: ["admin", "worker-status"],
+    queryFn: getWorkerStatus,
+    refetchInterval: 30000,
+    enabled: isAdmin,
   });
 
   return (
@@ -257,6 +265,59 @@ export function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+
+          {isAdmin && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-indigo-400" />
+                    Worker Health
+                  </span>
+                  {workerStatus ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className={`h-2 w-2 rounded-full ${workerStatus.status === "online" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                      <span className="text-xs font-semibold capitalize text-foreground">{workerStatus.status}</span>
+                    </div>
+                  ) : (
+                    <Skeleton className="h-4 w-16" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Feeds Queue</span>
+                  {workerStatus ? (
+                    <span className="inline-flex items-center justify-center rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/20">
+                      {workerStatus.queues.feeds}
+                    </span>
+                  ) : (
+                    <Skeleton className="h-5 w-8" />
+                  )}
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Notifications Queue</span>
+                  {workerStatus ? (
+                    <span className="inline-flex items-center justify-center rounded-full bg-teal-500/10 px-2.5 py-0.5 text-xs font-semibold text-teal-400 border border-teal-500/20">
+                      {workerStatus.queues.notifications}
+                    </span>
+                  ) : (
+                    <Skeleton className="h-5 w-8" />
+                  )}
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Maintenance Queue</span>
+                  {workerStatus ? (
+                    <span className="inline-flex items-center justify-center rounded-full bg-purple-500/10 px-2.5 py-0.5 text-xs font-semibold text-purple-400 border border-purple-500/20">
+                      {workerStatus.queues.maintenance}
+                    </span>
+                  ) : (
+                    <Skeleton className="h-5 w-8" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

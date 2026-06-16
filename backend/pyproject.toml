@@ -24,6 +24,7 @@ dependencies = [
     "celery==5.4.*",
     "celery-sqlalchemy-scheduler==0.3.0",  # DB-backed Beat scheduler
     "redis==5.*",                           # Celery broker + result backend client
+    "pytz>=2024.1",
 
     # HTTP client (for RSS polling tasks in M2)
     "httpx==0.27.*",

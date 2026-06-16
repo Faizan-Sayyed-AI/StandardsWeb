@@ -12,9 +12,13 @@ const routeLabels: Record<string, string> = {
   "/feeds": "Feed Management",
   "/schedule": "Schedule Config",
   "/users": "User Management",
+  "/admin/distribution-lists": "Distribution Lists",
+  "/admin/smtp-config": "SMTP Settings",
+  "/admin/audit-logs": "Audit Logs",
 };
 
 function getBreadcrumb(pathname: string): string {
+  if (routeLabels[pathname]) return routeLabels[pathname];
   const base = "/" + pathname.split("/")[1];
   return routeLabels[base] ?? "ISTS";
 }

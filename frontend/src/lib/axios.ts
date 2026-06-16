@@ -76,6 +76,15 @@ api.interceptors.response.use(
       }
     }
 
+    if (error.response?.status !== 401 || original._retried) {
+      const data = error.response?.data;
+      const detail = typeof data?.detail === "string" ? data.detail : (data?.detail ? JSON.stringify(data.detail) : error.message);
+      const code = data?.code ?? "API_ERROR";
+      window.dispatchEvent(
+        new CustomEvent("api-error", { detail: { detail, code } })
+      );
+    }
+
     return Promise.reject(error);
   }
 );

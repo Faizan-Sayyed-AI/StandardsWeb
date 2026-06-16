@@ -17,6 +17,8 @@ from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -111,6 +113,48 @@ async def ists_exception_handler(request: Request, exc: ISTSException) -> JSONRe
         status_code=exc.status_code,
         content={"detail": exc.detail, "code": exc.error_code},
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    errors = []
+    for err in exc.errors():
+        loc = " -> ".join(str(x) for x in err.get("loc", []))
+        msg = err.get("msg", "")
+        errors.append(f"{loc}: {msg}")
+    detail = "; ".join(errors) or "Validation failed"
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": detail, "code": "VALIDATION_ERROR"},
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    code_map = {
+        400: "BAD_REQUEST",
+        401: "AUTH_ERROR",
+        403: "FORBIDDEN",
+        404: "NOT_FOUND",
+        405: "METHOD_NOT_ALLOWED",
+        409: "CONFLICT",
+        429: "RATE_LIMIT_EXCEEDED",
+    }
+    error_code = code_map.get(exc.status_code, "HTTP_ERROR")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail, "code": error_code},
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    log.error("unexpected_server_error", error=str(exc), exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An unexpected error occurred", "code": "INTERNAL_ERROR"},
+    )
+
 
 
 # ── API routers ───────────────────────────────────────────────────────────────

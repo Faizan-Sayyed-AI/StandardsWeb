@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================
 # Dev-only overrides — automatically merged with docker-compose.yml
 # by `docker compose up`. Do not use in production.

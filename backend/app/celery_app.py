@@ -51,6 +51,15 @@ celery.conf.update(
     beat_sync_every=1,
     beat_dburi=settings.DATABASE_SYNC_URL,  # sync psycopg2 URL for Beat
 
+    # Static periodic tasks
+    beat_schedule={
+        "refresh-worker-heartbeat-60s": {
+            "task": "app.tasks.maintenance.refresh_worker_heartbeat",
+            "schedule": 60.0,
+            "options": {"queue": "maintenance"},
+        }
+    },
+
     # Queue routing
     task_routes={
         "app.tasks.feeds.*": {"queue": "feeds"},
