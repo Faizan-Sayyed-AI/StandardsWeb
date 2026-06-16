@@ -13,7 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
 
-const STATUS_OPTIONS = ["", "active", "withdrawn", "replaced", "amended", "revised"];
+const STATUS_OPTIONS = ["", "active", "withdrawn", "under_review", "replaced", "amended", "revised"];
 const SORT_OPTIONS = [
   { value: "published_date", label: "Stage Date" },
   { value: "updated_at", label: "Last updated" },
@@ -136,7 +136,7 @@ export function StandardsPage() {
                         : "border-white/10 text-muted-foreground hover:border-white/20"
                     }`}
                   >
-                    {s || "All"}
+                    {s ? s.replace("_", " ") : "All"}
                   </button>
                 ))}
               </div>

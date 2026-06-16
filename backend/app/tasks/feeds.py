@@ -395,12 +395,17 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
 
     if standard is None:
         # ── New standard discovered ──────────────────────────────────────────
+        new_status = parsed["status"]
+        # Amendment/corrigendum references always get amended status
+        if parsed['event_type_hint'] == 'amended':
+            new_status = StandardStatus.amended
+
         standard = Standard(
             iso_reference=iso_ref,
             title=parsed["title"],
             edition=parsed["edition"],
             tc_committee=tc_committee,
-            status=parsed["status"],
+            status=new_status,
             source_feed_id=feed.id,
             external_url=parsed["external_url"],
             content_hash=content_hash,
@@ -422,7 +427,7 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
                 "stage": parsed["stage"],
                 "stage_name": parsed["stage_name"],
                 "published_date": parsed["published_date"].isoformat() if parsed["published_date"] else None,
-                "status": parsed["status"].value,
+                "status": new_status.value,
                 "tc_committee": tc_committee,
                 "source_feed_id": str(feed.id),
             },
@@ -446,6 +451,10 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
 
     # ── Change detected ──────────────────────────────────────────────────────
     new_status = parsed["status"]
+    # Amendment/corrigendum references always get amended status
+    if parsed['event_type_hint'] == 'amended':
+        new_status = StandardStatus.amended
+
     event_type = _classify_event_from_hint(
         parsed["event_type_hint"],
         entry,
