@@ -81,6 +81,7 @@ async def list_standards(
         "updated_at": Standard.updated_at,
         "status": Standard.status,
         "created_at": Standard.created_at,
+        "published_date": Standard.published_date,
     }
     sort_col = sort_column_map.get(sort_by, Standard.updated_at)
     if sort_order == "desc":

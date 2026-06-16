@@ -38,7 +38,7 @@ async def list_standards(
     status: StandardStatus | None = Query(default=None),
     tc_committee: str | None = Query(default=None),
     is_purchased: bool | None = Query(default=None),
-    sort_by: Literal["iso_reference", "title", "updated_at", "status", "created_at"] = Query(
+    sort_by: Literal["iso_reference", "title", "updated_at", "status", "created_at", "published_date"] = Query(
         default="updated_at"
     ),
     sort_order: Literal["asc", "desc"] = Query(default="desc"),

@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/utils";
 
 const STATUS_OPTIONS = ["", "active", "withdrawn", "replaced", "amended", "revised"];
 const SORT_OPTIONS = [
+  { value: "published_date", label: "Stage Date" },
   { value: "updated_at", label: "Last updated" },
   { value: "iso_reference", label: "ISO Reference" },
   { value: "title", label: "Title" },
@@ -26,7 +27,7 @@ export function StandardsPage() {
   const [params, setParams] = useState<StandardsListParams>({
     page: 1,
     page_size: 25,
-    sort_by: "updated_at",
+    sort_by: "published_date",
     sort_order: "desc",
   });
   const [search, setSearch] = useState("");
@@ -225,7 +226,14 @@ export function StandardsPage() {
               </TableHead>
               <TableHead className="w-48">Stage</TableHead>
               <TableHead className="w-24">Edition</TableHead>
-              <TableHead className="w-32">Published</TableHead>
+              <TableHead className="w-32">
+                <button
+                  className="flex items-center gap-1 hover:text-foreground"
+                  onClick={() => updateSort("published_date")}
+                >
+                  Stage Date <SortIcon col="published_date" />
+                </button>
+              </TableHead>
               <TableHead className="w-28 text-right">
                 <button
                   className="flex items-center gap-1 ml-auto hover:text-foreground"
@@ -276,14 +284,13 @@ export function StandardsPage() {
                       <StatusBadge status={std.status} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1 items-start">
-                        <StatusBadge status={std.status} />
-                        {std.stage_name && (
-                          <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
-                            {std.stage_name}
-                          </Badge>
-                        )}
-                      </div>
+                      {std.stage_name ? (
+                        <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
+                          {std.stage_name}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-xs text-muted-foreground">{std.edition ?? "—"}</span>

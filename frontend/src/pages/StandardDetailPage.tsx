@@ -617,7 +617,7 @@ export function StandardDetailPage() {
               ? `${standard.stage_code} — ${standard.stage_name}` 
               : (standard.stage_code || standard.stage_name || "—") 
           },
-          { icon: Calendar, label: "Published", value: formatDate(standard.published_date) },
+          { icon: Calendar, label: "Stage Date", value: formatDate(standard.published_date) },
           { icon: Calendar, label: "Last Updated", value: formatDate(standard.updated_at) },
           { icon: Calendar, label: "Added", value: formatDate(standard.created_at) },
           {
