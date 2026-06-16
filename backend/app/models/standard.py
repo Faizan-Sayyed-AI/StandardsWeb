@@ -20,9 +20,9 @@ Schema (PRD §6.2):
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text, func, text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -75,6 +75,9 @@ class Standard(AsyncBase):
     # M2: SHA-256 fingerprint of RSS entry fields used for change detection.
     # Nullable because standards created before M2 (or manually) have no hash.
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    stage_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    stage_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    published_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

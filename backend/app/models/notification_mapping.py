@@ -27,7 +27,7 @@ class NotificationTriggerMapping(AsyncBase):
     )
     event_type: Mapped[str] = mapped_column(
         Enum(
-            "new", "updated", "amended", "withdrawn", "replaced", "purchased", "status_change",
+            "new", "updated", "amended", "withdrawn", "replaced", "purchased", "status_change", "document_uploaded",
             name="event_type_enum",
             create_type=False,
         ),
@@ -47,3 +47,4 @@ class NotificationTriggerMapping(AsyncBase):
         return (
             f"<NotificationTriggerMapping event_type={self.event_type} list_id={self.list_id}>"
         )
+

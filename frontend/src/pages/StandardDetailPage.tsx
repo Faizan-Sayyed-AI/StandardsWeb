@@ -3,9 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, BookOpen, Calendar, Download, ExternalLink, FileText,
-  GitBranch, Package, ScrollText, Tag, Trash2, Upload, X,
+  GitBranch, Loader2, Package, ScrollText, Tag, Trash2, Upload, X,
 } from "lucide-react";
-import { getStandard, getStandardHistory } from "@/api/standards";
+import { getStandard, getStandardHistory, purchaseStandard } from "@/api/standards";
 import {
   listDocuments,
   uploadDocument,
@@ -475,6 +475,27 @@ export function StandardDetailPage() {
     enabled: !!id,
   });
 
+  const queryClient = useQueryClient();
+  const { isAdmin, isManager } = useAuth();
+
+  const purchaseMutation = useMutation({
+    mutationFn: (notes?: string) => purchaseStandard(id!, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["standard", id] });
+      queryClient.invalidateQueries({ queryKey: ["standard", id, "history"] });
+    },
+    onError: () => {
+      alert("Failed to purchase standard");
+    }
+  });
+
+  const handlePurchase = () => {
+    const notes = prompt("Enter purchase notes (optional):");
+    if (notes !== null) {
+      purchaseMutation.mutate(notes || undefined);
+    }
+  };
+
   const { data: history } = useQuery({
     queryKey: ["standard", id, "history"],
     queryFn: () => getStandardHistory(id!, 1, 20),
@@ -542,10 +563,25 @@ export function StandardDetailPage() {
                   </p>
                 </div>
                 <StatusBadge status={standard.status} />
-                {standard.is_purchased && (
+                {standard.is_purchased ? (
                   <span className="text-xs font-medium text-teal-400 border border-teal-500/30 bg-teal-500/10 rounded-full px-2 py-0.5">
                     ✓ Purchased
                   </span>
+                ) : (
+                  (isAdmin || isManager) && (
+                    <Button
+                      size="sm"
+                      onClick={handlePurchase}
+                      disabled={purchaseMutation.isPending}
+                      className="h-7 px-3 bg-teal-600 hover:bg-teal-700 text-xs gap-1"
+                    >
+                      {purchaseMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        "Mark as Purchased"
+                      )}
+                    </Button>
+                  )
                 )}
               </div>
               <p className="text-base text-foreground leading-relaxed max-w-2xl">
@@ -571,9 +607,17 @@ export function StandardDetailPage() {
       </Card>
 
       {/* Meta row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { icon: Tag, label: "TC Committee", value: standard.tc_committee ?? "—" },
+          { 
+            icon: GitBranch, 
+            label: "ISO Stage", 
+            value: standard.stage_code && standard.stage_name 
+              ? `${standard.stage_code} — ${standard.stage_name}` 
+              : (standard.stage_code || standard.stage_name || "—") 
+          },
+          { icon: Calendar, label: "Published", value: formatDate(standard.published_date) },
           { icon: Calendar, label: "Last Updated", value: formatDate(standard.updated_at) },
           { icon: Calendar, label: "Added", value: formatDate(standard.created_at) },
           {
@@ -591,7 +635,7 @@ export function StandardDetailPage() {
                 {label}
               </p>
             </div>
-            <p className="text-sm font-semibold text-foreground">{value}</p>
+            <p className="text-sm font-semibold text-foreground break-words">{value}</p>
           </Card>
         ))}
       </div>

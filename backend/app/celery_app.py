@@ -46,7 +46,7 @@ celery.conf.update(
     result_expires=3600,
 
     # Beat scheduler — reads schedule from PostgreSQL via celery-sqlalchemy-scheduler
-    beat_scheduler="celery_sqlalchemy_scheduler:DatabaseScheduler",
+    beat_scheduler="celery_sqlalchemy_scheduler.schedulers:DatabaseScheduler",
     beat_max_loop_interval=300,   # re-read schedule every 5 minutes
     beat_sync_every=1,
     beat_dburi=settings.DATABASE_SYNC_URL,  # sync psycopg2 URL for Beat

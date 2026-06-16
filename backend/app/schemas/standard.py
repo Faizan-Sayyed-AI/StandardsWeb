@@ -7,7 +7,7 @@ GET /standards/{id}/history → Page[StandardHistoryItem]
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -25,6 +25,9 @@ class StandardListItem(BaseModel):
     tc_committee: str | None
     status: StandardStatus
     is_purchased: bool
+    stage_code: str | None = None
+    stage_name: str | None = None
+    published_date: date | None = None
     updated_at: datetime
     created_at: datetime
 
@@ -45,6 +48,9 @@ class StandardDetail(BaseModel):
     purchase_notes: str | None
     external_url: str | None
     source_feed_id: uuid.UUID | None
+    stage_code: str | None = None
+    stage_name: str | None = None
+    published_date: date | None = None
     created_at: datetime
     updated_at: datetime
 

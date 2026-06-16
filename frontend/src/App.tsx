@@ -10,6 +10,8 @@ import { StandardsPage } from "@/pages/StandardsPage";
 import { StandardDetailPage } from "@/pages/StandardDetailPage";
 import { FeedsPage } from "@/pages/FeedsPage";
 import { SchedulePage } from "@/pages/SchedulePage";
+import { DistributionListsPage } from "@/pages/DistributionListsPage";
+import { SMTPConfigPage } from "@/pages/SMTPConfigPage";
 
 // Layout route: ProtectedRoute + Layout together as the parent route element
 function ProtectedLayout() {
@@ -49,6 +51,8 @@ export default function App() {
               <Route element={<AdminLayout />}>
                 <Route path="/feeds" element={<FeedsPage />} />
                 <Route path="/schedule" element={<SchedulePage />} />
+                <Route path="/admin/distribution-lists" element={<DistributionListsPage />} />
+                <Route path="/admin/smtp-config" element={<SMTPConfigPage />} />
               </Route>
             </Route>
 

@@ -6,7 +6,7 @@ import { listStandards, type StandardsListParams } from "@/api/standards";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -223,7 +223,9 @@ export function StandardsPage() {
                   Status <SortIcon col="status" />
                 </button>
               </TableHead>
+              <TableHead className="w-48">Stage</TableHead>
               <TableHead className="w-24">Edition</TableHead>
+              <TableHead className="w-32">Published</TableHead>
               <TableHead className="w-28 text-right">
                 <button
                   className="flex items-center gap-1 ml-auto hover:text-foreground"
@@ -242,7 +244,9 @@ export function StandardsPage() {
                     <TableCell><Skeleton className="h-4 w-64" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
@@ -272,7 +276,20 @@ export function StandardsPage() {
                       <StatusBadge status={std.status} />
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-col gap-1 items-start">
+                        <StatusBadge status={std.status} />
+                        {std.stage_name && (
+                          <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
+                            {std.stage_name}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <span className="text-xs text-muted-foreground">{std.edition ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {formatDate(std.published_date)}
                     </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
                       {formatDate(std.updated_at)}

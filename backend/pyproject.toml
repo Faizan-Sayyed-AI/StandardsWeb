@@ -23,11 +23,11 @@ dependencies = [
     # Task queue
     "celery==5.4.*",
     "celery-sqlalchemy-scheduler==0.3.0",  # DB-backed Beat scheduler
-    "pytz>=2024.1",
     "redis==5.*",                           # Celery broker + result backend client
 
     # HTTP client (for RSS polling tasks in M2)
     "httpx==0.27.*",
+    "curl-cffi==0.15.*",
 
     # RSS parsing (M2)
     "feedparser==6.0.*",
@@ -36,8 +36,8 @@ dependencies = [
     "aiosmtplib==3.0.*",
 
     # Security
-    "bcrypt==4.*",
-        "python-jose[cryptography]==3.3.*",
+    "passlib[bcrypt]==1.7.*",
+    "python-jose[cryptography]==3.3.*",
 
     # File handling
     "python-multipart==0.0.*",   # multipart/form-data upload support
@@ -57,7 +57,8 @@ dependencies = [
 dev = [
     "pytest==8.*",
     "pytest-asyncio==0.23.*",
-    "httpx==0.27.*",   # for TestClient
+    "httpx==0.27.*",
+    "curl-cffi==0.15.*",   # for TestClient
     "ruff==0.4.*",
     "mypy==1.10.*",
 ]

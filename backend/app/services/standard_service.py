@@ -138,3 +138,70 @@ async def get_standard_history(
     )
     history = list(result.scalars().all())
     return history, total
+
+
+async def purchase_standard(
+    standard_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    purchase_notes: str | None,
+    db: AsyncSession,
+) -> Standard:
+    """
+    Mark standard as purchased, append standard history row, write audit log.
+    """
+    import datetime
+    from app.models.standard_history import EventSource, EventType, StandardHistory
+    from app.services.audit_service import write_audit_log
+
+    standard = await db.get(Standard, standard_id)
+    if standard is None:
+        raise NotFoundError("Standard")
+
+    old_snapshot = {
+        "is_purchased": standard.is_purchased,
+        "purchased_at": standard.purchased_at.isoformat() if standard.purchased_at else None,
+        "purchased_by": str(standard.purchased_by) if standard.purchased_by else None,
+        "purchase_notes": standard.purchase_notes,
+    }
+
+    standard.is_purchased = True
+    standard.purchased_at = datetime.datetime.now(datetime.timezone.utc)
+    standard.purchased_by = actor_id
+    standard.purchase_notes = purchase_notes
+
+    new_snapshot = {
+        "is_purchased": True,
+        "purchased_at": standard.purchased_at.isoformat(),
+        "purchased_by": str(actor_id),
+        "purchase_notes": purchase_notes,
+    }
+
+    history = StandardHistory(
+        standard_id=standard.id,
+        event_type=EventType.purchased,
+        old_value=old_snapshot,
+        new_value=new_snapshot,
+        source=EventSource.manual,
+        triggered_by=actor_id,
+        notes="Standard purchased manually",
+    )
+    db.add(history)
+    await db.flush()
+    await db.refresh(standard)
+
+    # Audit log
+    await write_audit_log(
+        db,
+        action="standard.purchased",
+        resource_type="standard",
+        actor_id=actor_id,
+        resource_id=standard.id,
+        payload={
+            "iso_reference": standard.iso_reference,
+            "purchase_notes": purchase_notes,
+        }
+    )
+
+    log.info("standard_purchased", standard_id=str(standard_id), actor_id=str(actor_id))
+    return standard
+

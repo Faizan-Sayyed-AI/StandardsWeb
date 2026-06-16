@@ -58,6 +58,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     restart: unless-stopped
 
   # ── Task Execution Layer ──────────────────────────────────
@@ -80,6 +82,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     restart: unless-stopped
 
   beat:
@@ -99,6 +103,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     restart: unless-stopped
 
   # ── Frontend (React 18 + Vite) ───────────────────────────────
@@ -114,6 +120,14 @@ services:
       - /app/node_modules     # anonymous volume so container node_modules don't get clobbered
     environment:
       VITE_API_URL: "http://localhost:8000"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: ists_mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
 
 volumes:
   pgdata:

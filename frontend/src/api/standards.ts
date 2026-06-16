@@ -69,3 +69,11 @@ export async function getStandardHistory(
   });
   return data;
 }
+
+export async function purchaseStandard(id: string, notes?: string): Promise<StandardDetail> {
+  const { data } = await api.post<StandardDetail>(`/api/v1/standards/${id}/purchase`, {
+    purchase_notes: notes,
+  });
+  return data;
+}
+

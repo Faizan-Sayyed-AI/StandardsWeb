@@ -19,13 +19,27 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
+import sys
+from sqlalchemy.pool import NullPool
+
+# Determine if running inside a Celery command
+is_celery = any("celery" in arg for arg in sys.argv)
+
+engine_kwargs = {
+    "pool_pre_ping": True,
+    "echo": settings.is_development,
+}
+
+if is_celery:
+    engine_kwargs["poolclass"] = NullPool
+else:
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
+
 # ── Engine ────────────────────────────────────────────────────────────────────
 engine = create_async_engine(
     settings.DATABASE_URL,
-    pool_pre_ping=True,   # verify connection is alive before using it
-    pool_size=10,
-    max_overflow=20,
-    echo=settings.is_development,  # log SQL in dev only
+    **engine_kwargs
 )
 
 # ── Session factory ───────────────────────────────────────────────────────────

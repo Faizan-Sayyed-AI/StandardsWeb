@@ -11,6 +11,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.rss_feed import RssFeed
 from app.models.standard import Standard
 from app.models.standard_history import StandardHistory
+from app.models.system_config import SystemConfig
 from app.models.user import User
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     "RssFeed",
     "Standard",
     "StandardHistory",
+    "SystemConfig",
     "User",
 ]

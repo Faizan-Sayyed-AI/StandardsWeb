@@ -102,3 +102,44 @@ async def get_standard_history(
         page=page,
         page_size=page_size,
     )
+
+
+from pydantic import BaseModel
+
+class StandardPurchaseRequest(BaseModel):
+    purchase_notes: str | None = None
+
+
+from app.api.deps import ManagerOrAdminUser
+
+@router.post(
+    "/{standard_id}/purchase",
+    response_model=StandardDetail,
+    summary="Mark standard as purchased (manager+)",
+)
+async def purchase_standard(
+    standard_id: uuid.UUID,
+    payload: StandardPurchaseRequest,
+    db: DBSession,
+    current_user: ManagerOrAdminUser,
+) -> StandardDetail:
+    """Mark standard as purchased. Triggers notifications and logs audit."""
+    standard = await standard_service.purchase_standard(
+        standard_id=standard_id,
+        actor_id=current_user.id,
+        purchase_notes=payload.purchase_notes,
+        db=db,
+    )
+
+    await db.commit()
+
+    # Trigger bulk notifications (in-app notifications for all users + email mapped lists)
+    from app.tasks.notifications import send_bulk_notification
+    send_bulk_notification.delay({
+        "event_type": "purchased",
+        "standard_id": str(standard.id),
+        "triggered_by_id": str(current_user.id),
+    })
+
+    return StandardDetail.model_validate(standard)
+

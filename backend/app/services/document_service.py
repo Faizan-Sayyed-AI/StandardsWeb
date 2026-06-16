@@ -200,6 +200,17 @@ async def upload_document(
         document=doc,
     )
 
+    await db.commit()
+
+    # 10. Enqueue email notifications to distribution lists
+    from app.tasks.notifications import send_email_notification
+    send_email_notification.delay({
+        "event_type": "document_uploaded",
+        "standard_id": str(standard_id),
+        "document_id": str(doc.id),
+        "triggered_by_id": str(actor_id),
+    })
+
     log.info(
         "document.uploaded",
         standard_id=str(standard_id),

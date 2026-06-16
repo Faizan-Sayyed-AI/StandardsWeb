@@ -6,6 +6,7 @@ import {
   Calendar,
   ChevronRight,
   Layers,
+  Mail,
   Rss,
   Settings,
   Shield,
@@ -30,6 +31,8 @@ const navItems: NavItem[] = [
   { label: "Standards", href: "/standards", icon: BookOpen },
   { label: "Feeds", href: "/feeds", icon: Rss, adminOnly: true },
   { label: "Schedule", href: "/schedule", icon: Calendar, adminOnly: true },
+  { label: "Distribution Lists", href: "/admin/distribution-lists", icon: Mail, adminOnly: true },
+  { label: "SMTP Settings", href: "/admin/smtp-config", icon: Settings, adminOnly: true },
   { label: "Users", href: "/users", icon: Users, adminOnly: true },
 ];
 
