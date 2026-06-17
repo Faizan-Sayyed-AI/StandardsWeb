@@ -92,6 +92,7 @@ async def create_user(
     )
     db.add(user)
     await db.flush()  # assign UUID before audit log
+    await db.refresh(user)  # load server-default timestamps
 
     await write_audit_log(
         db,
@@ -153,6 +154,7 @@ async def update_user(
 
     if changes:
         await db.flush()
+        await db.refresh(user)
         await write_audit_log(
             db,
             action="user.updated",

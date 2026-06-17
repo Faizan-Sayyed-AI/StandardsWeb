@@ -1,9 +1,46 @@
+import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { LogOut, Search } from "lucide-react";
+import { LogOut, Moon, Search, Sun } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    const stored = localStorage.getItem("theme");
+    const dark = stored !== "light";
+    if (!dark) document.documentElement.classList.add("light");
+    return dark;
+  });
+
+  const toggle = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      if (next) {
+        document.documentElement.classList.remove("light");
+        localStorage.setItem("theme", "dark");
+      } else {
+        document.documentElement.classList.add("light");
+        localStorage.setItem("theme", "light");
+      }
+      return next;
+    });
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggle}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      className="text-muted-foreground hover:text-foreground"
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
+  );
+}
 
 // Map route paths to human-readable breadcrumb labels
 const routeLabels: Record<string, string> = {
@@ -28,14 +65,29 @@ export function Layout() {
   const location = useLocation();
   const pageTitle = getBreadcrumb(location.pathname);
 
-  return (
-    <div className="flex min-h-screen bg-slate-950">
-      <Sidebar />
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem("sidebar_collapsed") === "true";
+  });
 
-      {/* Main area */}
-      <div className="flex flex-1 flex-col pl-60">
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+
+      {/* Main area — left padding tracks sidebar width */}
+      <div className={cn(
+        "flex flex-1 flex-col transition-all duration-300 ease-in-out",
+        sidebarCollapsed ? "pl-[60px]" : "pl-60"
+      )}>
         {/* Top header bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-white/8 bg-slate-950/80 backdrop-blur-xl px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-background/80 backdrop-blur-xl px-6">
           <div>
             <h1 className="text-sm font-semibold text-foreground">{pageTitle}</h1>
             <p className="text-xs text-muted-foreground">
@@ -54,6 +106,8 @@ export function Layout() {
             </button>
 
             <NotificationBell />
+
+            <ThemeToggle />
 
             <Button
               variant="ghost"

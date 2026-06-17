@@ -14,6 +14,9 @@ export interface Standard {
   edition: string | null;
   tc_committee: string | null;
   status: string;
+  stage_code: string | null;
+  stage_name: string | null;
+  published_date: string | null;
   is_purchased: boolean;
   updated_at: string;
   created_at: string;

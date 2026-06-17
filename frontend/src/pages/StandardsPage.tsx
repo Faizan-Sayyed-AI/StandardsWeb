@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
@@ -14,6 +14,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
 
 const STATUS_OPTIONS = ["", "active", "withdrawn", "under_review", "replaced", "amended", "revised"];
+
+const STAGE_OPTIONS = [
+  { label: "All Stages", value: "" },
+  { label: "Published (60.60)", value: "60.60" },
+  { label: "Confirmed (90.93)", value: "90.93" },
+  { label: "Under Periodical Review (90.20)", value: "90.20" },
+  { label: "Withdrawal (95.99)", value: "95.99" },
+  { label: "Working Draft (20.x)", value: "20.x" },
+  { label: "Committee Draft (30.x)", value: "30.x" },
+  { label: "DIS (40.x)", value: "40.x" },
+  { label: "FDIS (50.x)", value: "50.x" },
+];
+
 const SORT_OPTIONS = [
   { value: "published_date", label: "Stage Date" },
   { value: "updated_at", label: "Last updated" },
@@ -21,6 +34,15 @@ const SORT_OPTIONS = [
   { value: "title", label: "Title" },
   { value: "status", label: "Status" },
 ];
+
+function matchesStageFilter(stageCode: string | null, filter: string): boolean {
+  if (!filter) return true;
+  if (!stageCode) return false;
+  if (filter.endsWith(".x")) {
+    return stageCode.startsWith(filter.replace(/\.x$/, "."));
+  }
+  return stageCode === filter;
+}
 
 export function StandardsPage() {
   const navigate = useNavigate();
@@ -32,6 +54,8 @@ export function StandardsPage() {
   });
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [committeeFilter, setCommitteeFilter] = useState("");
+  const [stageFilter, setStageFilter] = useState("");
 
   const queryParams: StandardsListParams = {
     ...params,
@@ -43,6 +67,25 @@ export function StandardsPage() {
     queryFn: () => listStandards(queryParams),
     placeholderData: (prev) => prev,
   });
+
+  const committees = useMemo(() => {
+    const seen = new Set<string>();
+    (data?.items ?? []).forEach((std) => {
+      if (std.tc_committee) seen.add(std.tc_committee);
+    });
+    return Array.from(seen).sort();
+  }, [data?.items]);
+
+  const filteredItems = useMemo(() => {
+    let items = data?.items ?? [];
+    if (committeeFilter) {
+      items = items.filter((std) => std.tc_committee === committeeFilter);
+    }
+    if (stageFilter) {
+      items = items.filter((std) => matchesStageFilter(std.stage_code, stageFilter));
+    }
+    return items;
+  }, [data?.items, committeeFilter, stageFilter]);
 
   const updateSort = (sortBy: string) => {
     setParams((p) => ({
@@ -62,6 +105,13 @@ export function StandardsPage() {
       <ChevronDown className="h-3 w-3 text-indigo-400" />
     );
   };
+
+  const filterPill = (active: boolean) =>
+    `rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+      active
+        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
+        : "border-white/10 text-muted-foreground hover:border-white/20"
+    }`;
 
   const totalPages = data ? Math.ceil(data.total / (params.page_size ?? 25)) : 1;
 
@@ -119,8 +169,8 @@ export function StandardsPage() {
 
         {/* Expanded filters */}
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-white/8 flex flex-wrap gap-3">
-            {/* Status filter */}
+          <div className="mt-4 pt-4 border-t border-white/8 space-y-3">
+            {/* Row 1 — Status pills */}
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground font-medium">Status</p>
               <div className="flex gap-1.5 flex-wrap">
@@ -130,64 +180,88 @@ export function StandardsPage() {
                     onClick={() =>
                       setParams((p) => ({ ...p, status: s || undefined, page: 1 }))
                     }
-                    className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                      params.status === (s || undefined)
-                        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-white/10 text-muted-foreground hover:border-white/20"
-                    }`}
+                    className={filterPill(params.status === (s || undefined))}
                   >
-                    {s ? s.replace("_", " ") : "All"}
+                    {s ? s.replace(/_/g, " ") : "All"}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Purchased filter */}
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Purchased</p>
-              <div className="flex gap-1.5">
-                {[
-                  { label: "All", val: undefined },
-                  { label: "Yes", val: true },
-                  { label: "No", val: false },
-                ].map(({ label, val }) => (
-                  <button
-                    key={label}
-                    onClick={() =>
-                      setParams((p) => ({ ...p, is_purchased: val, page: 1 }))
-                    }
-                    className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                      params.is_purchased === val
-                        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-white/10 text-muted-foreground hover:border-white/20"
-                    }`}
+            {/* Row 2 — Committee dropdown | Stage dropdown | Purchased pills | Sort pills */}
+            <div className="flex flex-wrap items-end gap-4">
+              {/* Committee dropdown */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Committee</p>
+                <div className="relative">
+                  <select
+                    value={committeeFilter}
+                    onChange={(e) => setCommitteeFilter(e.target.value)}
+                    className="appearance-none min-w-[180px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    {label}
-                  </button>
-                ))}
+                    <option value="">All Committees</option>
+                    {committees.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                </div>
               </div>
-            </div>
 
-            {/* Sort */}
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Sort by</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {SORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => updateSort(opt.value)}
-                    className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                      params.sort_by === opt.value
-                        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-white/10 text-muted-foreground hover:border-white/20"
-                    }`}
+              {/* Stage dropdown */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Stage</p>
+                <div className="relative">
+                  <select
+                    value={stageFilter}
+                    onChange={(e) => setStageFilter(e.target.value)}
+                    className="appearance-none min-w-[200px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    {opt.label}
-                    {params.sort_by === opt.value && (
-                      <SortIcon col={opt.value} />
-                    )}
-                  </button>
-                ))}
+                    {STAGE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                </div>
+              </div>
+
+              {/* Purchased pills */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Purchased</p>
+                <div className="flex gap-1.5">
+                  {[
+                    { label: "All", val: undefined },
+                    { label: "Yes", val: true },
+                    { label: "No", val: false },
+                  ].map(({ label, val }) => (
+                    <button
+                      key={label}
+                      onClick={() =>
+                        setParams((p) => ({ ...p, is_purchased: val, page: 1 }))
+                      }
+                      className={filterPill(params.is_purchased === val)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sort pills */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Sort by</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => updateSort(opt.value)}
+                      className={`flex items-center gap-1 ${filterPill(params.sort_by === opt.value)}`}
+                    >
+                      {opt.label}
+                      {params.sort_by === opt.value && <SortIcon col={opt.value} />}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -198,7 +272,7 @@ export function StandardsPage() {
       <Card className="overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="border-b border-white/10 hover:bg-transparent">
               <TableHead className="w-36">
                 <button
                   className="flex items-center gap-1 hover:text-foreground"
@@ -245,64 +319,82 @@ export function StandardsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading
-              ? Array.from({ length: 10 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-64" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              : data?.items.map((std) => (
-                  <TableRow
-                    key={std.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate(`/standards/${std.id}`)}
-                  >
-                    <TableCell>
-                      <span className="font-mono text-xs font-semibold text-indigo-300">
-                        {std.iso_reference}
+            {isLoading ? (
+              Array.from({ length: 10 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-64" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                </TableRow>
+              ))
+            ) : filteredItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <BookOpen className="h-10 w-10 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      No standards match the current filters
+                    </p>
+                    <p className="text-xs text-muted-foreground/60">
+                      Try adjusting your search or filter criteria
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredItems.map((std) => (
+                <TableRow
+                  key={std.id}
+                  className="cursor-pointer hover:bg-white/4 transition-colors"
+                  onClick={() => navigate(`/standards/${std.id}`)}
+                >
+                  <TableCell>
+                    <span className="font-mono text-xs font-bold text-indigo-400 hover:underline">
+                      {std.iso_reference}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-xs">
+                    <p className="truncate text-foreground">{std.title}</p>
+                    {std.is_purchased && (
+                      <span className="inline-flex mt-0.5 items-center bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        ✓ Purchased
                       </span>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <p className="truncate text-foreground">{std.title}</p>
-                      {std.is_purchased && (
-                        <span className="text-[10px] text-teal-400">✓ Purchased</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {std.tc_committee ?? "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={std.status} />
-                    </TableCell>
-                    <TableCell>
-                      {std.stage_name ? (
-                        <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
-                          {std.stage_name}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">{std.edition ?? "—"}</span>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDate(std.published_date)}
-                    </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {formatDate(std.updated_at)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-muted-foreground">
+                      {std.tc_committee ?? "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={std.status} />
+                  </TableCell>
+                  <TableCell>
+                    {std.stage_name ? (
+                      <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
+                        {std.stage_name}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-muted-foreground">{std.edition ?? "—"}</span>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {formatDate(std.published_date)}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    {formatDate(std.updated_at)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
 

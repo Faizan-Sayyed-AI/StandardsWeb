@@ -30,6 +30,29 @@
   }
 }
 
+/* Light mode overrides — activated by adding class="light" to <html> */
+html.light {
+  --background: 0 0% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 238 83% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 92%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 14% 95%;
+  --muted-foreground: 220 8% 46%;
+  --accent: 173 80% 36%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 88%;
+  --input: 220 14% 95%;
+  --ring: 238 83% 60%;
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));
