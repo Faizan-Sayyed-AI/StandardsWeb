@@ -383,7 +383,7 @@ async def get_audit_logs(
                 resource_type=log_entry.resource_type,
                 resource_id=log_entry.resource_id,
                 payload=log_entry.payload,
-                ip_address=log_entry.ip_address,
+                ip_address=str(log_entry.ip_address) if log_entry.ip_address else None,
                 created_at=log_entry.created_at
             )
         )

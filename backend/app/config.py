@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed frontend origins
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
+    # ── RSS2JSON ──────────────────────────────────────────
+    RSS2JSON_API_KEY: str = ""
+
     # ── App ───────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"

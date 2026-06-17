@@ -1,46 +1,27 @@
-"""
+﻿"""
 Celery tasks: feeds queue.
 
-M2 full implementation + feed parser fix (pre-M6):
-  - Tag-based ISO entry parsing (replaces regex-only approach)
+Full implementation with:
+  - rss2json.com API fetch backend (bypasses ISO.org Cloudflare Managed Challenge)
+  - Tag-based ISO entry parsing (handles all prefix variants)
   - Full 36-entry ISO stage code → StandardStatus mapping
+  - Stage name extraction from _STAGE_NAME_MAP
+  - published_date from RSS pubDate field
+  - Amendment/corrigendum status override (/AMD, /Cor → amended)
   - TC committee extracted directly from RSS description field
-  - All ISO prefix variants handled: ISO/TS, ISO/TR, ISO/WD, ISO/AWI,
-    IEC/CD, IEC/TR, IEC/AWI, ISO/IEC, ISO/IEC/IEEE, etc.
 
 Tasks:
   poll_feed(feed_id)  — Fetch, parse, diff and persist one feed
   poll_all_feeds()    — Fan-out dispatcher for all enabled feeds (Beat entry)
-
-poll_feed flow (PRD §8.3):
-  1. Load feed record from DB; skip if disabled.
-  2. Fetch RSS XML via httpx (10 s timeout, follow redirects).
-  3. Parse with feedparser.
-  4. For each entry:
-       a. Parse ISO reference + title + stage + tc_committee from tags.
-       b. Compute SHA-256 content hash.
-       c. Query standards table by iso_reference.
-       d. INSERT new standard + history row (event_type=new) if not found.
-       e. UPDATE standard + append history row if content_hash differs.
-       f. Skip if hash unchanged (no-op).
-  5. Update rss_feeds: last_polled_at, last_poll_status=ok, failure_count=0.
-  6. Commit.
-
-Retry policy (exponential backoff — PRD §8.3 step 9):
-  Attempt 1 fails → retry after  60 s
-  Attempt 2 fails → retry after 120 s
-  Attempt 3 fails → retry after 240 s
-  Attempt 4 fails → mark permanently failed, log critical alert
 """
 
 import asyncio
 import hashlib
 import re
-from datetime import date, datetime, timezone
 import time
+from datetime import date, datetime, timezone
 from typing import Any
 
-import feedparser
 import httpx
 import structlog
 from sqlalchemy import select
@@ -58,26 +39,23 @@ log = structlog.get_logger(__name__)
 # Handles all prefix variants found in real ISO RSS feeds:
 #   ISO, ISO/TS, ISO/TR, ISO/WD, ISO/AWI, ISO/CD, ISO/NP, ISO/PAS
 #   IEC, IEC/TR, IEC/CD, IEC/AWI, IEC/TS
-#   IEEE
-#   ISO/IEC, ISO/IEC/IEEE
+#   IEEE, ISO/IEC, ISO/IEC/IEEE
 #   Combinations: ISO/WD TS, IEC/CD TS, etc.
-#
-# Also handles amendment/corrigendum suffixes:
-#   ISO 15223-1:2021/Amd 1:2025
-#   IEC 80369-5:2016/Cor 2:2021
+#   Amendments: ISO 15223-1:2021/Amd 1:2025
+#   Corrigenda: IEC 80369-5:2016/Cor 2:2021
 # ─────────────────────────────────────────────────────────────────────────────
 _REFERENCE_RE = re.compile(
     r"^"
     r"("
-    r"(?:ISO|IEC|IEEE)"                             # base org
-    r"(?:/(?:IEC|IEEE|TS|TR|WD|AWI|CD|NP|PAS|GUIDE))*"  # optional slash-suffixes
-    r"(?:\s+(?:TS|TR|WD|AWI|CD|NP|PAS|GUIDE))?"    # optional space-suffixes e.g. "ISO/WD TS"
-    r")"                                            # end org group
+    r"(?:ISO|IEC|IEEE)"
+    r"(?:/(?:IEC|IEEE|TS|TR|WD|AWI|CD|NP|PAS|GUIDE))*"
+    r"(?:\s+(?:TS|TR|WD|AWI|CD|NP|PAS|GUIDE))?"
+    r")"
     r"\s+"
     r"("
-    r"\d+(?:[.\-]\d+)*"                             # main number + optional parts
-    r"(?::\d{4})?"                                  # optional year :2021
-    r"(?:/(?:Amd|Cor|DAmd|DCor)\s*\d+(?::\d{4})?)?"  # optional amendment/corrigendum
+    r"\d+(?:[.\-]\d+)*"
+    r"(?::\d{4})?"
+    r"(?:/(?:Amd|Cor|DAmd|DCor)\s*\d+(?::\d{4})?)?"
     r")",
     re.IGNORECASE,
 )
@@ -86,57 +64,51 @@ _EDITION_RE = re.compile(r":(\d{4})\b")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Full ISO stage code → StandardStatus mapping (all 36 defined stage codes)
-# Source: ISO/IEC Directives, Supplement — Procedures specific to ISO
 # ─────────────────────────────────────────────────────────────────────────────
 _STAGE_STATUS_MAP: dict[str, StandardStatus] = {
-    # Preliminary / New work
     "10.00": StandardStatus.under_review,
     "10.99": StandardStatus.under_review,
-    # Working Draft
     "20.00": StandardStatus.under_review,
     "20.20": StandardStatus.under_review,
     "20.60": StandardStatus.under_review,
-    "20.98": StandardStatus.withdrawn,    # Project deleted at WD stage
+    "20.98": StandardStatus.withdrawn,
     "20.99": StandardStatus.under_review,
-    # Committee Draft
     "30.00": StandardStatus.under_review,
     "30.20": StandardStatus.under_review,
     "30.60": StandardStatus.under_review,
     "30.92": StandardStatus.under_review,
-    "30.98": StandardStatus.withdrawn,    # Project deleted at CD stage
+    "30.98": StandardStatus.withdrawn,
     "30.99": StandardStatus.under_review,
-    # DIS (Draft International Standard)
     "40.00": StandardStatus.under_review,
     "40.20": StandardStatus.under_review,
     "40.60": StandardStatus.under_review,
     "40.92": StandardStatus.under_review,
-    "40.98": StandardStatus.withdrawn,    # Project deleted at DIS stage
+    "40.98": StandardStatus.withdrawn,
     "40.99": StandardStatus.under_review,
-    # FDIS (Final Draft International Standard)
     "50.00": StandardStatus.under_review,
     "50.20": StandardStatus.under_review,
     "50.60": StandardStatus.under_review,
     "50.92": StandardStatus.under_review,
-    "50.98": StandardStatus.withdrawn,    # Project deleted at FDIS stage
+    "50.98": StandardStatus.withdrawn,
     "50.99": StandardStatus.under_review,
-    # Publication
-    "60.00": StandardStatus.active,       # Under publication
-    "60.60": StandardStatus.active,       # Published
-    # Review / Confirmation
+    "60.00": StandardStatus.active,
+    "60.60": StandardStatus.active,
     "90.00": StandardStatus.active,
-    "90.20": StandardStatus.active,       # Under periodical review
+    "90.20": StandardStatus.active,
     "90.60": StandardStatus.active,
-    "90.92": StandardStatus.active,       # To be revised
-    "90.93": StandardStatus.active,       # Confirmed
-    "90.99": StandardStatus.withdrawn,    # Withdrawal approved
-    # Withdrawal
+    "90.92": StandardStatus.active,
+    "90.93": StandardStatus.active,
+    "90.99": StandardStatus.withdrawn,
     "95.00": StandardStatus.withdrawn,
     "95.20": StandardStatus.withdrawn,
     "95.60": StandardStatus.withdrawn,
-    "95.92": StandardStatus.active,       # Decision NOT to withdraw — remains active
-    "95.99": StandardStatus.withdrawn,    # Officially withdrawn
+    "95.92": StandardStatus.active,
+    "95.99": StandardStatus.withdrawn,
 }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Full ISO stage code → Stage name mapping (all 36 defined stage codes)
+# ─────────────────────────────────────────────────────────────────────────────
 _STAGE_NAME_MAP: dict[str, str] = {
     "10.00": "Preliminary work item registered",
     "10.99": "New work item approved",
@@ -180,25 +152,16 @@ _STAGE_NAME_MAP: dict[str, str] = {
 
 
 def _map_stage_to_status(stage: str | None) -> StandardStatus:
-    """
-    Map an ISO stage code string to StandardStatus.
-
-    Tries exact match first, then falls back to major-number heuristic.
-    """
+    """Map an ISO stage code to StandardStatus."""
     if not stage:
         return StandardStatus.active
-
-    # Exact match
     if stage in _STAGE_STATUS_MAP:
         return _STAGE_STATUS_MAP[stage]
-
-    # Fallback: use major number only
     try:
         major = int(stage.split(".")[0])
     except (ValueError, IndexError):
         return StandardStatus.active
-
-    if major == 95 or major == 20 and stage.endswith(".98"):
+    if major == 95:
         return StandardStatus.withdrawn
     if major in (60, 90):
         return StandardStatus.active
@@ -215,19 +178,10 @@ def parse_iso_entry(entry: Any) -> dict | None:
     Parse an ISO RSS entry using tag content rather than free-text regex.
 
     Returns a dict with keys:
-      iso_reference, title, edition, stage, status,
-      tc_committee, last_change_date, external_url, event_type_hint
+      iso_reference, title, edition, stage, stage_name, status,
+      tc_committee, published_date, external_url, event_type_hint
 
     Returns None if the entry has no recognisable ISO reference.
-
-    Title format expected:
-      "ISO/TS 24971-2 - Medical devices — Guidance on..."
-      "ISO 80369-7:2021 - Small-bore connectors — Part 7: ..."
-      "ISO 15223-1:2021/Amd 1:2025 - Medical devices — Symbols..."
-      "ISO/WD TS 24971-3 - Medical devices - Guidance on..."
-
-    Description format expected:
-      "This document reached stage 90.93 on 2025-10-31, TC/SC: ISO/TC 210, ICS: 11.040.01"
     """
     raw_title = entry.get("title", "").strip()
     description = entry.get("summary", entry.get("description", "")).strip()
@@ -239,13 +193,12 @@ def parse_iso_entry(entry: Any) -> dict | None:
         log.debug("entry_no_iso_reference", title=raw_title[:80])
         return None
 
-    org_part = match.group(1).strip()       # e.g. "ISO/TS" or "ISO/WD TS" or "IEC"
-    num_part = match.group(2).strip()       # e.g. "24971-2" or "80369-7:2021"
+    org_part = match.group(1).strip()
+    num_part = match.group(2).strip()
     iso_reference = f"{org_part} {num_part}".upper()
 
-    # ── Step 2: Extract clean title (everything after reference + separator) ─
+    # ── Step 2: Extract clean title ──────────────────────────────────────────
     remainder = raw_title[match.end():].strip()
-    remainder = remainder.strip()
     for sep in (" - ", "- ", " — ", "— ", "—", " – ", "– ", "–"):
         if remainder.startswith(sep):
             remainder = remainder[len(sep):]
@@ -253,35 +206,39 @@ def parse_iso_entry(entry: Any) -> dict | None:
     title = re.sub(r"\s+", " ", remainder).strip() or raw_title
 
     # ── Step 3: Parse description field ─────────────────────────────────────
-    # Description: "This document reached stage 90.93 on 2025-10-31, TC/SC: ISO/TC 210"
     stage: str | None = None
     tc_committee: str | None = None
-    last_change_date: str | None = None
 
     if "stage " in description:
         after_stage = description.split("stage ")[1]
         stage_candidate = after_stage.split(" ")[0].rstrip(",")
-        # Validate it looks like a stage code e.g. "90.93"
         if re.match(r"^\d{2}\.\d{2}$", stage_candidate):
             stage = stage_candidate
 
-    if " on " in description:
-        after_on = description.split(" on ")[1]
-        date_candidate = after_on.split(",")[0].strip()
-        # Validate date format YYYY-MM-DD
-        if re.match(r"^\d{4}-\d{2}-\d{2}$", date_candidate):
-            last_change_date = date_candidate
-
     if "TC/SC: " in description:
         after_tc = description.split("TC/SC: ")[1]
-        tc_committee = after_tc.split(",")[0].strip()   # "ISO/TC 210"
+        tc_committee = after_tc.split(",")[0].strip()
 
-    # ── Step 4: Map stage to status ──────────────────────────────────────────
+    # ── Step 4: Map stage to status and name ─────────────────────────────────
     status = _map_stage_to_status(stage)
+    stage_name = _STAGE_NAME_MAP.get(stage) if stage else None
 
-    # ── Step 5: Determine event_type hint from reference + stage ─────────────
+    # ── Step 5: Parse published_date from feedparser's published_parsed ──────
+    published_date: date | None = None
+    published_parsed = entry.get("published_parsed")
+    if published_parsed:
+        try:
+            published_date = date(
+                published_parsed.tm_year,
+                published_parsed.tm_mon,
+                published_parsed.tm_mday,
+            )
+        except (AttributeError, ValueError):
+            published_date = None
+
+    # ── Step 6: Determine event_type hint ────────────────────────────────────
     ref_upper = iso_reference.upper()
-    event_type_hint: str = "new"  # default; overridden on update
+    event_type_hint: str = "new"
 
     if "/AMD" in ref_upper or "/DAMD" in ref_upper:
         event_type_hint = "amended"
@@ -290,41 +247,26 @@ def parse_iso_entry(entry: Any) -> dict | None:
     elif status == StandardStatus.withdrawn:
         event_type_hint = "withdrawn"
 
-    # ── Step 6: Extract edition year from reference ──────────────────────────
+    # ── Step 7: Extract edition year ─────────────────────────────────────────
     edition_match = _EDITION_RE.search(iso_reference)
     edition = edition_match.group(1) if edition_match else None
-
-    # ── Step 7: Parse published date ──────────────────────────────────────────
-    parsed_time = entry.get("published_parsed")
-    published_date = None
-    if parsed_time:
-        try:
-            published_date = date(*parsed_time[:3])
-        except (TypeError, ValueError):
-            published_date = None
 
     return {
         "iso_reference": iso_reference,
         "title": title,
         "edition": edition,
         "stage": stage,
-        "stage_name": _STAGE_NAME_MAP.get(stage) if stage else None,
-        "published_date": published_date,
+        "stage_name": stage_name,
         "status": status,
         "tc_committee": tc_committee,
-        "last_change_date": last_change_date,
+        "published_date": published_date,
         "external_url": link or None,
         "event_type_hint": event_type_hint,
     }
 
 
 def compute_content_hash(entry: Any) -> str:
-    """
-    Compute a SHA-256 fingerprint of an RSS entry.
-
-    Fields hashed: title, link, published, updated, summary (first 500 chars).
-    A different hash on subsequent polls indicates content has changed.
-    """
+    """SHA-256 fingerprint of an RSS entry."""
     h = hashlib.sha256()
     for field in ("title", "link", "published", "updated"):
         h.update(str(entry.get(field, "")).encode())
@@ -338,21 +280,11 @@ def _classify_event_from_hint(
     current_status: StandardStatus,
     new_status: StandardStatus,
 ) -> EventType:
-    """
-    Determine EventType for an update.
-
-    Priority:
-      1. hint from parse_iso_entry (amendment/corrigendum in reference)
-      2. Status transition to withdrawn
-      3. Title/summary keyword scan as fallback
-    """
+    """Determine EventType for an update."""
     if hint == "amended":
         return EventType.amended
-
     if new_status == StandardStatus.withdrawn and current_status != StandardStatus.withdrawn:
         return EventType.withdrawn
-
-    # Keyword fallback
     text = (
         str(entry.get("title", "")) + " " + str(entry.get("summary", ""))
     ).lower()
@@ -362,7 +294,6 @@ def _classify_event_from_hint(
         return EventType.withdrawn
     if any(kw in text for kw in ("amended", "amendment", "corrigendum")):
         return EventType.amended
-
     return EventType.updated
 
 
@@ -370,36 +301,27 @@ def _classify_event_from_hint(
 # Entry processing
 # ─────────────────────────────────────────────────────────────────────────────
 async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, str | None]:
-    """
-    Process one RSS entry against the standards database.
-
-    Performs upsert + history append inside the caller's transaction.
-    Returns (event_type_str, standard_id | None).
-    """
-    # Parse entry using tag-based approach
+    """Process one RSS entry against the standards database."""
     parsed = parse_iso_entry(entry)
     if parsed is None:
         return "skipped", None
 
     iso_ref = parsed["iso_reference"]
     content_hash = compute_content_hash(entry)
-
-    # Use tc_committee from RSS description if available, else fall back to feed setting
     tc_committee = parsed["tc_committee"] or feed.tc_committee
 
-    # Look up existing standard
     result = await session.execute(
         select(Standard).where(Standard.iso_reference == iso_ref)
     )
     standard = result.scalar_one_or_none()
 
+    # ── Amendment/corrigendum status override ────────────────────────────────
+    new_status = parsed["status"]
+    if parsed["event_type_hint"] == "amended":
+        new_status = StandardStatus.amended
+
     if standard is None:
         # ── New standard discovered ──────────────────────────────────────────
-        new_status = parsed["status"]
-        # Amendment/corrigendum references always get amended status
-        if parsed['event_type_hint'] == 'amended':
-            new_status = StandardStatus.amended
-
         standard = Standard(
             iso_reference=iso_ref,
             title=parsed["title"],
@@ -426,9 +348,9 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
                 "edition": parsed["edition"],
                 "stage": parsed["stage"],
                 "stage_name": parsed["stage_name"],
-                "published_date": parsed["published_date"].isoformat() if parsed["published_date"] else None,
                 "status": new_status.value,
                 "tc_committee": tc_committee,
+                "published_date": str(parsed["published_date"]) if parsed["published_date"] else None,
                 "source_feed_id": str(feed.id),
             },
             source=EventSource.rss,
@@ -439,22 +361,18 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
             "standard_discovered",
             iso_reference=iso_ref,
             stage=parsed["stage"],
-            status=parsed["status"].value,
+            stage_name=parsed["stage_name"],
+            status=new_status.value,
             tc_committee=tc_committee,
             feed_id=str(feed.id),
         )
         return "new", str(standard.id)
 
-    # No change — content hash matches
+    # No change
     if standard.content_hash == content_hash:
         return "skipped", None
 
     # ── Change detected ──────────────────────────────────────────────────────
-    new_status = parsed["status"]
-    # Amendment/corrigendum references always get amended status
-    if parsed['event_type_hint'] == 'amended':
-        new_status = StandardStatus.amended
-
     event_type = _classify_event_from_hint(
         parsed["event_type_hint"],
         entry,
@@ -467,10 +385,10 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
         "edition": standard.edition,
         "status": standard.status.value if standard.status else None,
         "tc_committee": standard.tc_committee,
-        "content_hash": standard.content_hash,
-        "stage_code": standard.stage_code,
+        "stage": standard.stage_code,
         "stage_name": standard.stage_name,
-        "published_date": standard.published_date.isoformat() if standard.published_date else None,
+        "published_date": str(standard.published_date) if standard.published_date else None,
+        "content_hash": standard.content_hash,
     }
 
     standard.title = parsed["title"]
@@ -489,9 +407,9 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
         "edition": standard.edition,
         "status": standard.status.value if standard.status else None,
         "tc_committee": standard.tc_committee,
-        "stage": parsed["stage"],
-        "stage_name": parsed["stage_name"],
-        "published_date": parsed["published_date"].isoformat() if parsed["published_date"] else None,
+        "stage": standard.stage_code,
+        "stage_name": standard.stage_name,
+        "published_date": str(standard.published_date) if standard.published_date else None,
         "content_hash": content_hash,
     }
 
@@ -522,6 +440,7 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
 async def _poll_feed_async(feed_id: str) -> dict:
     """Full async implementation of the poll_feed business logic."""
     from app.database import async_session_factory
+    from app.config import settings
 
     async with async_session_factory() as session:
         result = await session.execute(
@@ -537,34 +456,53 @@ async def _poll_feed_async(feed_id: str) -> dict:
             log.info("poll_feed_disabled", feed_id=feed_id)
             return {"status": "skipped", "reason": "feed_disabled", "feed_id": feed_id}
 
-        async with httpx.AsyncClient(
-            timeout=10.0,
-            follow_redirects=True,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-                "Accept": "application/rss+xml, application/xml, text/xml, */*",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Cache-Control": "no-cache",
-                "Referer": "https://www.iso.org/",
-            },
-        ) as client:
-            response = await client.get(feed.url)
-            response.raise_for_status()
-            raw_content = response.text
-
-        parsed = feedparser.parse(raw_content)
-
-        if parsed.bozo and not parsed.entries:
-            raise ValueError(
-                f"RSS parse failure for '{feed.url}': {parsed.bozo_exception}"
+        # Fetch via rss2json API (bypasses ISO.org Cloudflare Managed Challenge)
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.get(
+                "https://api.rss2json.com/v1/api.json",
+                params={
+                    "rss_url": feed.url,
+                    "api_key": settings.RSS2JSON_API_KEY,
+                    "count": 200,
+                },
             )
+            response.raise_for_status()
+            payload = response.json()
+
+        if payload.get("status") != "ok":
+            raise ValueError(
+                f"rss2json returned non-ok status for '{feed.url}': "
+                f"{payload.get('message', 'unknown error')}"
+            )
+
+        raw_items = payload.get("items", [])
+
+        # Convert rss2json items to feedparser-compatible dicts so that
+        # parse_iso_entry() and compute_content_hash() remain unmodified.
+        entries = []
+        for item in raw_items:
+            pub_date_str = item.get("pubDate", "")
+            published_parsed = None
+            if pub_date_str:
+                try:
+                    published_parsed = time.strptime(pub_date_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    published_parsed = None
+
+            entries.append({
+                "title": item.get("title", ""),
+                "summary": item.get("description", ""),
+                "link": item.get("link", ""),
+                "id": item.get("link", ""),
+                "published": pub_date_str,
+                "updated": pub_date_str,
+                "published_parsed": published_parsed,
+            })
 
         log.info(
             "feed_fetched",
             feed_id=feed_id,
-            entry_count=len(parsed.entries),
-            feed_title=parsed.feed.get("title", ""),
+            entry_count=len(entries),
         )
 
         new_count = 0
@@ -572,7 +510,7 @@ async def _poll_feed_async(feed_id: str) -> dict:
         skipped_count = 0
         notifications_to_send = []
 
-        for entry in parsed.entries:
+        for entry in entries:
             try:
                 outcome, std_id = await _process_entry(entry, feed, session)
             except Exception as exc:
@@ -613,7 +551,7 @@ async def _poll_feed_async(feed_id: str) -> dict:
         "new": new_count,
         "updated": updated_count,
         "skipped": skipped_count,
-        "total_entries": len(parsed.entries),
+        "total_entries": len(entries),
     }
     log.info("poll_feed_complete", **summary)
     return summary
