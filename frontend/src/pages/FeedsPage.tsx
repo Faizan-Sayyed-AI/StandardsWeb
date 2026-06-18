@@ -20,12 +20,23 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 
+const DAYS_OF_WEEK = [
+  { value: 0, label: "Monday" },
+  { value: 1, label: "Tuesday" },
+  { value: 2, label: "Wednesday" },
+  { value: 3, label: "Thursday" },
+  { value: 4, label: "Friday" },
+  { value: 5, label: "Saturday" },
+  { value: 6, label: "Sunday" },
+];
+
 const DEFAULT_FORM: FeedCreate = {
   name: "",
   url: "",
   tc_committee: "",
   schedule_type: "daily",
   schedule_hour: 6,
+  schedule_day_of_week: 0,
   is_enabled: true,
 };
 
@@ -146,7 +157,7 @@ export function FeedsPage() {
                       <span className="text-xs text-muted-foreground">
                         {feed.schedule_type === "daily"
                           ? `Daily ${String(feed.schedule_hour).padStart(2, "0")}:00 UTC`
-                          : `Weekly Mon ${String(feed.schedule_hour).padStart(2, "0")}:00`}
+                          : `Weekly ${DAYS_OF_WEEK[feed.schedule_day_of_week ?? 0]?.label ?? "Mon"} ${String(feed.schedule_hour).padStart(2, "0")}:00 UTC`}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -312,6 +323,26 @@ export function FeedsPage() {
                 ))}
               </div>
             </div>
+
+            {form.schedule_type === "weekly" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="feed-day-of-week">Day of week</Label>
+                <select
+                  id="feed-day-of-week"
+                  value={form.schedule_day_of_week ?? 0}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, schedule_day_of_week: parseInt(e.target.value, 10) }))
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                >
+                  {DAYS_OF_WEEK.map((day) => (
+                    <option key={day.value} value={day.value}>
+                      {day.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -323,6 +354,8 @@ export function FeedsPage() {
                 createMutation.mutate({
                   ...form,
                   tc_committee: form.tc_committee || undefined,
+                  schedule_day_of_week:
+                    form.schedule_type === "weekly" ? (form.schedule_day_of_week ?? 0) : undefined,
                 })
               }
               disabled={createMutation.isPending || !form.name || !form.url}
