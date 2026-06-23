@@ -106,6 +106,16 @@ async def get_standard(standard_id: uuid.UUID, db: AsyncSession) -> Standard:
     return standard
 
 
+async def get_amendments(standard_id: uuid.UUID, db: AsyncSession) -> list[Standard]:
+    """Return all child standards (amendments/corrigenda) linked to this parent."""
+    result = await db.execute(
+        select(Standard)
+        .where(Standard.parent_standard_id == standard_id)
+        .order_by(Standard.iso_reference.asc())
+    )
+    return list(result.scalars().all())
+
+
 async def get_standard_history(
     standard_id: uuid.UUID,
     db: AsyncSession,

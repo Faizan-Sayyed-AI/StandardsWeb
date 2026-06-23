@@ -2,10 +2,10 @@ import { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, BookOpen, Calendar, Download, ExternalLink, FileText,
+  ArrowLeft, BookOpen, Calendar, Copy, Download, ExternalLink, FileText,
   GitBranch, Loader2, Package, ScrollText, Tag, Trash2, Upload, X,
 } from "lucide-react";
-import { getStandard, getStandardHistory, purchaseStandard } from "@/api/standards";
+import { getStandard, getStandardHistory, purchaseStandard, type Standard } from "@/api/standards";
 import {
   listDocuments,
   uploadDocument,
@@ -22,6 +22,43 @@ import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/utils";
+
+// ── JSON snapshot block with copy-to-clipboard ────────────────────────────────
+
+function JsonSnapshot({ value }: { value: Record<string, unknown> }) {
+  const [copied, setCopied] = useState(false);
+  const text = JSON.stringify(value, null, 2);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="mt-2 max-w-full overflow-hidden">
+      <div className="relative rounded-lg border border-slate-700/50 bg-slate-900/60 p-3">
+        <button
+          onClick={handleCopy}
+          title="Copy JSON"
+          className="absolute right-2 top-2 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:bg-white/8 hover:text-slate-200 transition-colors"
+        >
+          {copied ? (
+            <span className="text-teal-400">✓ Copied</span>
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+        </button>
+        <div className="max-h-48 overflow-y-auto overflow-x-auto pr-10">
+          <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all">
+            {text}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── History tab helpers ────────────────────────────────────────────────────────
 
@@ -508,6 +545,12 @@ export function StandardDetailPage() {
     enabled: !!id,
   });
 
+  const { data: parentStandard } = useQuery({
+    queryKey: ["standard", standard?.parent_standard_id],
+    queryFn: () => getStandard(standard!.parent_standard_id!),
+    enabled: !!standard?.parent_standard_id,
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -640,6 +683,81 @@ export function StandardDetailPage() {
         ))}
       </div>
 
+      {/* Base Standard banner — shown when this record is an amendment */}
+      {standard.parent_standard_id && (
+        <div className="flex items-center gap-3 rounded-xl border border-indigo-500/25 bg-indigo-500/8 px-4 py-3">
+          <GitBranch className="h-4 w-4 text-indigo-400 shrink-0" />
+          <p className="text-sm text-indigo-300 flex-1">
+            This is an amendment or corrigendum of{" "}
+            <span className="font-semibold text-foreground">
+              {parentStandard?.iso_reference ?? "the base standard"}
+            </span>
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/standards/${standard.parent_standard_id}`)}
+            className="gap-2 border-indigo-500/30 text-indigo-300 hover:text-indigo-200 shrink-0"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            View Base Standard
+          </Button>
+        </div>
+      )}
+
+      {/* Amendments card — shown on base standards that have child amendments */}
+      {standard.amendments && standard.amendments.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <GitBranch className="h-4 w-4 text-yellow-400" />
+              Amendments &amp; Corrigenda
+              <span className="ml-1 rounded-full bg-yellow-500/15 border border-yellow-500/25 px-2 py-0.5 text-[10px] font-semibold text-yellow-400">
+                {standard.amendments.length}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="divide-y divide-white/6">
+              {standard.amendments.map((amd: Standard) => (
+                <div
+                  key={amd.id}
+                  className="flex items-center justify-between py-3 gap-4"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10 border border-yellow-500/20 shrink-0">
+                      <ScrollText className="h-3.5 w-3.5 text-yellow-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {amd.iso_reference}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {amd.stage_code && amd.stage_name
+                          ? `Stage ${amd.stage_code} — ${amd.stage_name}`
+                          : (amd.stage_code ?? "—")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <StatusBadge status={amd.status} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/standards/${amd.id}`)}
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                    >
+                      View
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs: History | Documents */}
       <Card>
         <CardContent className="p-6">
@@ -697,9 +815,7 @@ export function StandardDetailPage() {
                               </time>
                             </div>
                             {item.new_value && (
-                              <div className="mt-2 rounded-md bg-white/4 p-3 font-mono text-xs text-muted-foreground overflow-auto max-h-40">
-                                <pre>{JSON.stringify(item.new_value, null, 2)}</pre>
-                              </div>
+                              <JsonSnapshot value={item.new_value} />
                             )}
                             {item.notes && (
                               <p className="mt-2 text-xs text-muted-foreground">{item.notes}</p>

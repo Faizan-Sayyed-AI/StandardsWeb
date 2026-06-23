@@ -51,10 +51,17 @@ class StandardDetail(BaseModel):
     stage_code: str | None = None
     stage_name: str | None = None
     published_date: date | None = None
+    parent_standard_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class StandardDetailWithAmendments(StandardDetail):
+    """StandardDetail extended with linked amendment records."""
+
+    amendments: list[StandardListItem] = []
 
 
 class StandardHistoryItem(BaseModel):

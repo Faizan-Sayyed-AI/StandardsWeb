@@ -63,6 +63,38 @@ _REFERENCE_RE = re.compile(
 _EDITION_RE = re.compile(r":(\d{4})\b")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Amendment detection helpers
+#
+# _TITLE_AMD_PREFIX_RE — matches amendment/corrigendum type prefix that appears
+# at the START of the leftover title text after the iso_reference is extracted.
+# ISO feeds sometimes format these as:
+#   "ISO 27874:2008 /CD Amd 1 — Metallic..."  (prefix before title)
+# rather than the standard appended form:
+#   "ISO 9001:2015/Amd 1:2025 — ..."           (handled by _REFERENCE_RE)
+#
+# Matches: /CD Amd 1, /DAmd 1, /Amd 1, /Cor 1, /DCor 1  (with optional year)
+# ─────────────────────────────────────────────────────────────────────────────
+_TITLE_AMD_PREFIX_RE = re.compile(
+    r"^/((?:CD\s+)?D?(?:Amd|Cor)\s*\d+(?::\d{4})?)\s*[-—]\s*",
+    re.IGNORECASE,
+)
+
+# Matches amendment/corrigendum suffix at the END of an iso_reference string.
+# Used to extract the parent reference from an amendment iso_reference.
+# e.g. "ISO 27874:2008/CD Amd 1" → suffix at "/CD Amd 1", parent = "ISO 27874:2008"
+_AMD_SUFFIX_RE = re.compile(
+    r"/((?:CD\s+)?D?(?:Amd|Cor)\s*\d+(?::\d{4})?)$",
+    re.IGNORECASE,
+)
+
+
+def _get_parent_reference(iso_reference: str) -> str | None:
+    """If iso_reference is an amendment/corrigendum, return the base standard reference."""
+    m = _AMD_SUFFIX_RE.search(iso_reference)
+    return iso_reference[:m.start()].strip() if m else None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Full ISO stage code → StandardStatus mapping (all 36 defined stage codes)
 # ─────────────────────────────────────────────────────────────────────────────
 _STAGE_STATUS_MAP: dict[str, StandardStatus] = {
@@ -197,8 +229,17 @@ def parse_iso_entry(entry: Any) -> dict | None:
     num_part = match.group(2).strip()
     iso_reference = f"{org_part} {num_part}".upper()
 
+    # ── Step 1b: Detect title-prefix amendment (e.g. " /CD Amd 1 — title") ──
+    remainder_raw = raw_title[match.end():].strip()
+    amd_prefix_match = _TITLE_AMD_PREFIX_RE.match(remainder_raw)
+    if amd_prefix_match:
+        # Normalise spacing and append as amendment suffix to iso_reference
+        amd_suffix = "/" + re.sub(r"\s+", " ", amd_prefix_match.group(1)).strip()
+        iso_reference = iso_reference + amd_suffix
+        remainder_raw = remainder_raw[amd_prefix_match.end():]
+
     # ── Step 2: Extract clean title ──────────────────────────────────────────
-    remainder = raw_title[match.end():].strip()
+    remainder = remainder_raw
     for sep in (" - ", "- ", " — ", "— ", "—", " – ", "– ", "–"):
         if remainder.startswith(sep):
             remainder = remainder[len(sep):]
@@ -240,9 +281,9 @@ def parse_iso_entry(entry: Any) -> dict | None:
     ref_upper = iso_reference.upper()
     event_type_hint: str = "new"
 
-    if "/AMD" in ref_upper or "/DAMD" in ref_upper:
+    if "/AMD" in ref_upper or "/DAMD" in ref_upper or "/CD AMD" in ref_upper:
         event_type_hint = "amended"
-    elif "/COR" in ref_upper or "/DCOR" in ref_upper:
+    elif "/COR" in ref_upper or "/DCOR" in ref_upper or "/CD COR" in ref_upper:
         event_type_hint = "amended"
     elif status == StandardStatus.withdrawn:
         event_type_hint = "withdrawn"
@@ -366,6 +407,17 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
             tc_committee=tc_committee,
             feed_id=str(feed.id),
         )
+
+        # ── Auto-link amendment to its parent standard ───────────────────────
+        parent_ref = _get_parent_reference(iso_ref)
+        if parent_ref and standard.parent_standard_id is None:
+            parent_result = await session.execute(
+                select(Standard).where(Standard.iso_reference == parent_ref)
+            )
+            parent = parent_result.scalar_one_or_none()
+            if parent:
+                standard.parent_standard_id = parent.id
+
         return "new", str(standard.id)
 
     # No change
@@ -431,6 +483,17 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
         stage=parsed["stage"],
         feed_id=str(feed.id),
     )
+
+    # ── Auto-link amendment to its parent standard ───────────────────────────
+    parent_ref = _get_parent_reference(iso_ref)
+    if parent_ref and standard.parent_standard_id is None:
+        parent_result = await session.execute(
+            select(Standard).where(Standard.iso_reference == parent_ref)
+        )
+        parent = parent_result.scalar_one_or_none()
+        if parent:
+            standard.parent_standard_id = parent.id
+
     return event_type.value, str(standard.id)
 
 

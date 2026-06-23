@@ -18,7 +18,7 @@ from fastapi import APIRouter, Query
 from app.api.deps import CurrentUser, DBSession
 from app.models.standard import StandardStatus
 from app.schemas.pagination import Page
-from app.schemas.standard import StandardDetail, StandardHistoryItem, StandardListItem
+from app.schemas.standard import StandardDetail, StandardDetailWithAmendments, StandardHistoryItem, StandardListItem
 from app.services import standard_service
 
 router = APIRouter(prefix="/standards", tags=["Standards"])
@@ -64,17 +64,21 @@ async def list_standards(
 
 @router.get(
     "/{standard_id}",
-    response_model=StandardDetail,
+    response_model=StandardDetailWithAmendments,
     summary="Standard detail (viewer+)",
 )
 async def get_standard(
     standard_id: uuid.UUID,
     db: DBSession,
     _: CurrentUser,
-) -> StandardDetail:
-    """Fetch a single standard's full detail. Returns 404 if not found."""
+) -> StandardDetailWithAmendments:
+    """Fetch a single standard's full detail including linked amendments. Returns 404 if not found."""
     standard = await standard_service.get_standard(standard_id, db)
-    return StandardDetail.model_validate(standard)
+    amendments = await standard_service.get_amendments(standard_id, db)
+    return StandardDetailWithAmendments(
+        **StandardDetail.model_validate(standard).model_dump(),
+        amendments=[StandardListItem.model_validate(a) for a in amendments],
+    )
 
 
 @router.get(

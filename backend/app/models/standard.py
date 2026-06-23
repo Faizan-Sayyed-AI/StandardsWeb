@@ -78,6 +78,12 @@ class Standard(AsyncBase):
     stage_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     stage_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     published_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    parent_standard_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("standards.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

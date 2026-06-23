@@ -18,6 +18,7 @@ export interface Standard {
   stage_name: string | null;
   published_date: string | null;
   is_purchased: boolean;
+  parent_standard_id: string | null;
   updated_at: string;
   created_at: string;
 }
@@ -27,6 +28,7 @@ export interface StandardDetail extends Standard {
   purchase_notes: string | null;
   external_url: string | null;
   source_feed_id: string | null;
+  amendments: Standard[];
 }
 
 export interface HistoryItem {
