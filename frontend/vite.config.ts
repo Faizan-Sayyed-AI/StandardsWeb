@@ -13,8 +13,10 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     proxy: {
+      // Server-side proxy target must use the Docker network service name,
+      // not VITE_API_URL (which is a browser-facing, host-mapped URL).
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://web:8000",
         changeOrigin: true,
       },
     },
