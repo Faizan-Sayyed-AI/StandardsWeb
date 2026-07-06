@@ -59,6 +59,11 @@ async def get_current_user(
     if not user.is_active:
         raise AuthError("Account is deactivated")
 
+    if user.tokens_valid_after is not None:
+        issued_at = payload.get("iat")
+        if issued_at is None or issued_at < user.tokens_valid_after.timestamp():
+            raise AuthError("Token has been revoked. Please log in again.")
+
     # Bind user context to all log lines in this request
     structlog.contextvars.bind_contextvars(
         user_id=str(user.id),

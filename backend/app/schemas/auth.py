@@ -46,6 +46,7 @@ class PasswordResetConfirm(BaseModel):
     token: str = Field(description="Raw reset token received via email link")
     new_password: str = Field(
         min_length=8,
-        description="New password — minimum 8 characters",
+        max_length=72,  # bcrypt silently truncates beyond 72 bytes — cap input instead
+        description="New password — 8 to 72 characters",
     )
 

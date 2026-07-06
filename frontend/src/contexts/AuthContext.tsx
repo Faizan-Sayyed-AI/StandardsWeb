@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { useNavigate } from "react-router-dom";
 import { loginApi, logoutApi } from "@/api/auth";
 import { getAccessToken, setAccessToken } from "@/lib/axios";
+import { decodeJwtPayload } from "@/lib/jwt";
 import { queryClient } from "@/lib/queryClient";
 
 interface User {
@@ -38,7 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data } = await api.post<{ access_token: string }>("/api/v1/auth/refresh");
         setAccessToken(data.access_token);
         // Decode JWT payload to get user info
-        const payload = JSON.parse(atob(data.access_token.split(".")[1]));
+        const payload = decodeJwtPayload<{ sub: string; email?: string; full_name?: string; role: string }>(
+          data.access_token
+        );
         setUser({
           id: payload.sub,
           email: payload.email ?? "",
@@ -59,7 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await loginApi(email, password);
     setAccessToken(data.access_token);
     // Decode payload
-    const payload = JSON.parse(atob(data.access_token.split(".")[1]));
+    const payload = decodeJwtPayload<{ sub: string; email?: string; full_name?: string; role: string }>(
+      data.access_token
+    );
     setUser({
       id: payload.sub,
       email: payload.email ?? email,

@@ -298,53 +298,64 @@ async def _send_email_notification_async(
         success_count = 0
         failure_count = 0
         failed_emails = []
+        connection_error: str | None = None
 
-        # Connect to SMTP server
-        client = aiosmtplib.SMTP(
-            hostname=smtp_settings["SMTP_HOST"],
-            port=smtp_settings["SMTP_PORT"],
-            use_tls=smtp_settings["SMTP_USE_TLS"]
-        )
-        await client.connect()
-        if smtp_settings["SMTP_USER"] and smtp_settings["SMTP_PASSWORD"]:
-            await client.login(smtp_settings["SMTP_USER"], smtp_settings["SMTP_PASSWORD"])
-
+        # Connect to SMTP server. This (and the per-recipient loop) are
+        # inside a try/except so a connect/login failure — e.g. the SMTP
+        # server being down — still reaches the audit log below instead of
+        # propagating straight out of the task and skipping it entirely.
         try:
-            for email, name in recipients.items():
-                try:
-                    html_body = render_html_template(
-                        event_title=event_title,
-                        event_desc=event_desc,
-                        recipient_name=name,
-                        standard=standard,
-                        document=doc
-                    )
-                    text_body = render_text_template(
-                        event_title=event_title,
-                        event_desc=event_desc,
-                        recipient_name=name,
-                        standard=standard,
-                        document=doc
-                    )
+            client = aiosmtplib.SMTP(
+                hostname=smtp_settings["SMTP_HOST"],
+                port=smtp_settings["SMTP_PORT"],
+                use_tls=smtp_settings["SMTP_USE_TLS"]
+            )
+            await client.connect()
+            if smtp_settings["SMTP_USER"] and smtp_settings["SMTP_PASSWORD"]:
+                await client.login(smtp_settings["SMTP_USER"], smtp_settings["SMTP_PASSWORD"])
 
-                    msg = MIMEMultipart("alternative")
-                    msg["Subject"] = subject
-                    msg["From"] = smtp_settings["SMTP_FROM_ADDRESS"]
-                    msg["To"] = email
+            try:
+                for email, name in recipients.items():
+                    try:
+                        html_body = render_html_template(
+                            event_title=event_title,
+                            event_desc=event_desc,
+                            recipient_name=name,
+                            standard=standard,
+                            document=doc
+                        )
+                        text_body = render_text_template(
+                            event_title=event_title,
+                            event_desc=event_desc,
+                            recipient_name=name,
+                            standard=standard,
+                            document=doc
+                        )
 
-                    msg.attach(MIMEText(text_body, "plain"))
-                    msg.attach(MIMEText(html_body, "html"))
+                        msg = MIMEMultipart("alternative")
+                        msg["Subject"] = subject
+                        msg["From"] = smtp_settings["SMTP_FROM_ADDRESS"]
+                        msg["To"] = email
 
-                    await client.send_message(msg)
-                    success_count += 1
-                except Exception as e:
-                    failure_count += 1
-                    failed_emails.append((email, str(e)))
-                    log.warning("send_email_failed_for_recipient", email=email, error=str(e))
-        finally:
-            await client.quit()
+                        msg.attach(MIMEText(text_body, "plain"))
+                        msg.attach(MIMEText(html_body, "html"))
 
-        # Audit logging
+                        await client.send_message(msg)
+                        success_count += 1
+                    except Exception as e:
+                        failure_count += 1
+                        failed_emails.append((email, str(e)))
+                        log.warning("send_email_failed_for_recipient", email=email, error=str(e))
+            finally:
+                await client.quit()
+        except Exception as exc:
+            # Connect/login itself failed — none of the recipients were attempted.
+            connection_error = str(exc)
+            failure_count = len(recipients)
+            log.error("send_email_notification_connection_failed", error=connection_error)
+
+        # Audit logging — always runs, even on a connection failure, so the
+        # failure is never silently lost with only a log line as evidence.
         actor_uuid = uuid.UUID(triggered_by_id) if triggered_by_id else None
         await write_audit_log(
             db,
@@ -357,10 +368,16 @@ async def _send_email_notification_async(
                 "recipient_count": len(recipients),
                 "success_count": success_count,
                 "failure_count": failure_count,
-                "failures": failed_emails
+                "failures": failed_emails,
+                "connection_error": connection_error,
             }
         )
         await db.commit()
+
+        if connection_error:
+            # Let the Celery task layer retry — a transient SMTP outage
+            # shouldn't permanently drop the notification.
+            raise RuntimeError(f"SMTP connection/login failed: {connection_error}")
 
     return {
         "status": "ok",
@@ -370,12 +387,21 @@ async def _send_email_notification_async(
     }
 
 
-@celery.task(name="app.tasks.notifications.send_email_notification", queue="notifications")
-def send_email_notification(payload: dict) -> dict:  # type: ignore[no-untyped-def]
+@celery.task(
+    name="app.tasks.notifications.send_email_notification",
+    queue="notifications",
+    bind=True,
+    max_retries=3,
+)
+def send_email_notification(self, payload: dict) -> dict:  # type: ignore[no-untyped-def]
     """
     Assemble and send HTML email notifications to mapped distribution lists.
 
     Accepts payload with event_type, standard_id, and optional document_id, triggered_by_id.
+    Retries with exponential backoff on an SMTP connect/login failure — see
+    _send_email_notification_async, which only raises for that case (not for
+    a single recipient's send failing, to avoid re-sending to recipients who
+    already succeeded).
     """
     log.info("send_email_notification_called", payload=payload)
     event_type = payload.get("event_type")
@@ -386,7 +412,30 @@ def send_email_notification(payload: dict) -> dict:  # type: ignore[no-untyped-d
     if not event_type or not standard_id:
         return {"status": "error", "reason": "missing_required_fields"}
 
-    return asyncio.run(_send_email_notification_async(event_type, standard_id, document_id, triggered_by_id))
+    try:
+        return asyncio.run(
+            _send_email_notification_async(event_type, standard_id, document_id, triggered_by_id)
+        )
+    except Exception as exc:
+        retries = self.request.retries
+        if retries >= self.max_retries:
+            log.error(
+                "send_email_notification_permanently_failed",
+                payload=payload,
+                retries=retries,
+                error=str(exc),
+            )
+            return {"status": "permanently_failed", "error": str(exc)}
+
+        countdown = 60 * (2 ** retries)
+        log.warning(
+            "send_email_notification_retrying",
+            payload=payload,
+            error=str(exc),
+            retry_number=retries + 1,
+            countdown_seconds=countdown,
+        )
+        raise self.retry(exc=exc, countdown=countdown)
 
 
 @celery.task(name="app.tasks.notifications.send_bulk_notification", queue="notifications")

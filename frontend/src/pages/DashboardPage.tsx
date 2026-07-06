@@ -70,7 +70,7 @@ export function DashboardPage() {
 
   const { data: recentStandards } = useQuery({
     queryKey: ["standards", "recent"],
-    queryFn: () => listStandards({ page: 1, page_size: 8, sort_by: "updated_at", sort_order: "desc" }),
+    queryFn: () => listStandards({ page: 1, page_size: 8, sort_by: "updated_at", sort_order: "desc", grouped: false }),
   });
 
   const { data: workerStatus } = useQuery({

@@ -139,11 +139,26 @@ async def revoke_refresh_token(raw_refresh_token: str, db: AsyncSession) -> None
 
 
 async def revoke_all_user_tokens(user_id: uuid.UUID, db: AsyncSession) -> None:
-    """Revoke all active refresh tokens for a user (called on deactivation)."""
+    """
+    Revoke all active refresh tokens for a user (deactivation, password reset),
+    and invalidate any already-issued JWT access tokens by advancing
+    tokens_valid_after.
+
+    Without that cutoff, JWTs are stateless and aren't looked up per request,
+    so a stolen/leaked access token would otherwise stay valid for up to
+    JWT_EXPIRE_HOURS even after the user resets their password or is
+    deactivated. Enforced in get_current_user() (app/api/deps.py), which
+    rejects any token whose `iat` predates this timestamp.
+    """
     await db.execute(
         update(RefreshToken)
         .where(RefreshToken.user_id == user_id, RefreshToken.is_revoked == False)  # noqa: E712
         .values(is_revoked=True)
+    )
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(tokens_valid_after=datetime.now(timezone.utc))
     )
 
 

@@ -105,8 +105,14 @@ async def upload_document(
         ConflictError       if an identical file (same SHA-256) already exists
                             for this standard.
     """
-    # 1. Verify standard
-    standard = await db.get(Standard, standard_id)
+    # 1. Verify standard — locked FOR UPDATE so two concurrent uploads to the
+    # same standard serialize instead of racing on MAX(version_number) and
+    # both flipping is_current=True. The lock is held until this
+    # transaction commits (step 9 below).
+    result = await db.execute(
+        select(Standard).where(Standard.id == standard_id).with_for_update()
+    )
+    standard = result.scalar_one_or_none()
     if standard is None:
         raise NotFoundError("Standard")
 

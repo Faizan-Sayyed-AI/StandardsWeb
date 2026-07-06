@@ -7,6 +7,7 @@ and manual poll dispatching via Celery.
 All mutating operations write an audit log entry.
 """
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -18,6 +19,7 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.models.celery_schedule import CelerySchedule
 from app.models.rss_feed import RssFeed, ScheduleType
 from app.schemas.feed import FeedCreate, FeedUpdate
+from app.services import celery_beat_sync
 from app.services.audit_service import write_audit_log
 
 log = structlog.get_logger(__name__)
@@ -32,19 +34,33 @@ def _cron_from_schedule(
     """
     Build a standard 5-field cron expression from feed schedule settings.
 
+    schedule_day_of_week uses this app's convention (0=Monday..6=Sunday, per
+    the frontend's DAYS_OF_WEEK picker), which does NOT match standard cron's
+    day-of-week field (0/7=Sunday, 1=Monday..6=Saturday) — the two must be
+    converted, or e.g. selecting "Monday" in the UI silently schedules the
+    poll for Sunday instead.
+
     Examples:
-      daily   at 06:00 UTC → "0 6 * * *"
-      weekly  on Mon 06:00 → "0 6 * * 0"
+      daily   at 06:00 UTC          → "0 6 * * *"
+      weekly  on Mon (app dow=0) 06:00 → "0 6 * * 1"  (cron Monday)
+      weekly  on Sun (app dow=6) 06:00 → "0 6 * * 0"  (cron Sunday)
     """
     if schedule_type == ScheduleType.daily:
         return f"0 {schedule_hour} * * *"
     # weekly
-    dow = schedule_day_of_week if schedule_day_of_week is not None else 0
-    return f"0 {schedule_hour} * * {dow}"
+    app_dow = schedule_day_of_week if schedule_day_of_week is not None else 0
+    cron_dow = (app_dow + 1) % 7
+    return f"0 {schedule_hour} * * {cron_dow}"
 
 
-async def _upsert_celery_schedule(feed: RssFeed, db: AsyncSession) -> None:
-    """Create or update the celery_schedules metadata row for a feed."""
+async def _upsert_celery_schedule_metadata(feed: RssFeed, db: AsyncSession) -> None:
+    """
+    Create or update the celery_schedules metadata row for a feed.
+
+    This only writes app-level metadata inside the caller's (uncommitted)
+    transaction. It deliberately does NOT touch Beat's own tables — see
+    sync_feed_beat_schedule(), which must run after the transaction commits.
+    """
     cron = _cron_from_schedule(feed.schedule_type, feed.schedule_hour, feed.schedule_day_of_week)
 
     result = await db.execute(
@@ -63,6 +79,27 @@ async def _upsert_celery_schedule(feed: RssFeed, db: AsyncSession) -> None:
     else:
         schedule.cron_expression = cron
         schedule.is_enabled = feed.is_enabled
+
+
+async def sync_feed_beat_schedule(feed: RssFeed) -> None:
+    """
+    Materialize a feed's cron schedule into Beat's own tables.
+
+    celery_beat_sync writes on a separate connection that commits
+    immediately (see celery_beat_sync.py), so this must only be called
+    AFTER the caller has committed the feed row's own transaction —
+    otherwise a request that fails/rolls back after this call would leave
+    a Beat schedule pointing at a feed that was never actually persisted.
+    """
+    cron = _cron_from_schedule(feed.schedule_type, feed.schedule_hour, feed.schedule_day_of_week)
+    await asyncio.to_thread(
+        celery_beat_sync.sync_feed_schedule, str(feed.id), cron, feed.is_enabled
+    )
+
+
+async def delete_feed_beat_schedule(feed_id: uuid.UUID) -> None:
+    """Remove a feed's Beat schedule. Call AFTER committing the feed's deletion."""
+    await asyncio.to_thread(celery_beat_sync.delete_feed_schedule, str(feed_id))
 
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -122,7 +159,7 @@ async def create_feed(
     db.add(feed)
     await db.flush()  # assign UUID before creating schedule row
 
-    await _upsert_celery_schedule(feed, db)
+    await _upsert_celery_schedule_metadata(feed, db)
 
     await write_audit_log(
         db,
@@ -201,7 +238,7 @@ async def update_feed(
         await db.flush()
 
         if schedule_changed:
-            await _upsert_celery_schedule(feed, db)
+            await _upsert_celery_schedule_metadata(feed, db)
 
         await write_audit_log(
             db,

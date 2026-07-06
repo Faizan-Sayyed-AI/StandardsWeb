@@ -145,14 +145,15 @@ async def download_document(
     if settings.STORAGE_BACKEND.lower() == "s3":
         return RedirectResponse(url=download_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
-    # Local: stream the file
+    # Local: stream the file. Content-Disposition is derived from `filename`
+    # by FileResponse itself (percent-encoded via urllib.parse.quote), which
+    # safely escapes quote/control characters in a user-supplied upload
+    # filename — do NOT pass an explicit Content-Disposition header here, it
+    # would override that safe default with an unescaped, injectable string.
     return FileResponse(
         path=download_url,
         filename=doc.filename,
         media_type=doc.mime_type,
-        headers={
-            "Content-Disposition": f'attachment; filename="{doc.filename}"',
-        },
     )
 
 

@@ -50,6 +50,15 @@ class User(AsyncBase):
     last_login: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    tokens_valid_after: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment=(
+            "JWT access tokens issued (iat) before this timestamp are rejected. "
+            "Set on password reset / forced logout-everywhere, since JWTs are "
+            "stateless and otherwise remain valid until natural expiry."
+        ),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

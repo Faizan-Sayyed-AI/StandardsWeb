@@ -52,6 +52,9 @@ dependencies = [
 
     # Settings
     "pydantic-settings==2.*",
+
+    # Email address validation (pydantic's EmailStr)
+    "email-validator==2.*",
 ]
 
 [project.optional-dependencies]

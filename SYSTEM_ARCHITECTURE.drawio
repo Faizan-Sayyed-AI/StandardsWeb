@@ -1,0 +1,212 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="ists-system-architecture" name="ISTS System Architecture">
+    <mxGraphModel dx="2180" dy="1408" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=20;fontStyle=1;" value="ISTS — ISO Standards Tracking System | Overall System Architecture" vertex="1">
+          <mxGeometry height="38" width="1100" x="400" y="12" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=2;fontColor=#555555;" value="Layered view: Presentation · REST API · Business Logic + Async Tasks · Data Store" vertex="1">
+          <mxGeometry height="22" width="1100" x="400" y="46" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontStyle=1;fontColor=#888888;" value="ACTORS" vertex="1">
+          <mxGeometry height="16" width="70" x="38" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_admin" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=10;align=center;" value="&lt;b&gt;Admin&lt;/b&gt;&lt;br&gt;Full access&lt;br&gt;User mgmt" vertex="1">
+          <mxGeometry height="60" width="90" x="38" y="88" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_manager" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=center;" value="&lt;b&gt;Manager&lt;/b&gt;&lt;br&gt;Feeds, purchase&lt;br&gt;upload docs" vertex="1">
+          <mxGeometry height="60" width="90" x="38" y="158" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_viewer" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=center;" value="&lt;b&gt;Viewer&lt;/b&gt;&lt;br&gt;Browse, read&lt;br&gt;notifications" vertex="1">
+          <mxGeometry height="60" width="90" x="38" y="228" as="geometry" />
+        </mxCell>
+        <mxCell id="h_auth" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontStyle=1;fontColor=#6a2fa0;" value="AUTH &amp; USERS" vertex="1">
+          <mxGeometry height="18" width="275" x="145" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h_standards" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontStyle=1;fontColor=#1a56a6;" value="STANDARDS TRACKING" vertex="1">
+          <mxGeometry height="18" width="275" x="430" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h_feeds" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontStyle=1;fontColor=#a06000;" value="FEED MANAGEMENT" vertex="1">
+          <mxGeometry height="18" width="275" x="715" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h_notif" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontStyle=1;fontColor=#2a7a40;" value="NOTIFICATIONS" vertex="1">
+          <mxGeometry height="18" width="275" x="1000" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h_docs" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontStyle=1;fontColor=#8a6800;" value="DOCUMENTS" vertex="1">
+          <mxGeometry height="18" width="275" x="1285" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h_admin" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontStyle=1;fontColor=#444444;" value="ADMIN &amp; SYSTEM" vertex="1">
+          <mxGeometry height="18" width="275" x="1570" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h_ext" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontStyle=1;fontColor=#7a4fa0;" value="EXTERNAL" vertex="1">
+          <mxGeometry height="18" width="160" x="1860" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="bg_ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDF5FF;strokeColor=#9EB8D9;fontStyle=1;verticalAlign=top;align=left;spacingLeft=6;fontSize=10;arcSize=2;" value="" vertex="1">
+          <mxGeometry height="195" width="1720" x="135" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_ui" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontStyle=1;fontColor=#1a56a6;" value="PRESENTATION — React 19 SPA · TypeScript 6 · TanStack Query v5 · React Router v7 · Tailwind CSS" vertex="1">
+          <mxGeometry height="14" width="700" x="142" y="93" as="geometry" />
+        </mxCell>
+        <mxCell id="bg_api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFFFF4;strokeColor=#82b366;fontStyle=1;verticalAlign=top;align=left;spacingLeft=6;fontSize=10;arcSize=2;" value="" vertex="1">
+          <mxGeometry height="165" width="1720" x="135" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_api" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontStyle=1;fontColor=#2a7a40;" value="REST API — FastAPI · Python 3.12 · Uvicorn/Gunicorn · JWT Bearer auth on every route · slowapi rate limiting · structlog" vertex="1">
+          <mxGeometry height="14" width="800" x="145" y="288" as="geometry" />
+        </mxCell>
+        <mxCell id="bg_logic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8EE;strokeColor=#d79b00;fontStyle=1;verticalAlign=top;align=left;spacingLeft=6;fontSize=10;arcSize=2;" value="" vertex="1">
+          <mxGeometry height="215" width="1720" x="135" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_logic" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontStyle=1;fontColor=#a06000;" value="BUSINESS LOGIC + ASYNC TASKS — SQLAlchemy 2.0 async services · Celery 5.4 workers (feeds / notifications / maintenance queues) · Celery Beat scheduler" vertex="1">
+          <mxGeometry height="14" width="1000" x="142" y="473" as="geometry" />
+        </mxCell>
+        <mxCell id="bg_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6EEFF;strokeColor=#9673a6;fontStyle=1;verticalAlign=top;align=left;spacingLeft=6;fontSize=10;arcSize=2;" value="" vertex="1">
+          <mxGeometry height="285" width="1720" x="135" y="695" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_data" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontStyle=1;fontColor=#6a2fa0;" value="DATA STORE — PostgreSQL 16 (13 tables · 6 Alembic migrations) · Redis 7 (Celery broker + result backend)" vertex="1">
+          <mxGeometry height="14" width="700" x="142" y="698" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Auth &amp; Users UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;LoginPage — email + password&lt;br&gt;UsersPage — CRUD, role assignment&lt;br&gt;&lt;br&gt;AuthContext — JWT token store&lt;br&gt;ProtectedRoute — role guard&lt;br&gt;  · admin | manager | viewer&lt;br&gt;  · requireAdmin prop" vertex="1">
+          <mxGeometry height="162" width="275" x="145" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Auth API&lt;/b&gt;&lt;br&gt;&lt;br&gt;POST /auth/login&lt;br&gt;POST /auth/refresh&lt;br&gt;POST /auth/logout&lt;br&gt;POST /auth/request-password-reset&lt;br&gt;POST /auth/reset-password&lt;br&gt;GET · POST · PATCH · DELETE /users/*" vertex="1">
+          <mxGeometry height="138" width="275" x="145" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_logic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Auth Logic&lt;/b&gt;&lt;br&gt;&lt;br&gt;python-jose — JWT HS256&lt;br&gt;passlib[bcrypt] — password hashing&lt;br&gt;Access token: 8 h&lt;br&gt;Refresh token: 7 d (rotation)&lt;br&gt;Password reset token: 1 h&lt;br&gt;slowapi — 60 req/min on auth endpoints&lt;br&gt;300 req/min on all other endpoints" vertex="1">
+          <mxGeometry height="187" width="275" x="145" y="488" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Auth Data&lt;/b&gt;&lt;br&gt;&lt;br&gt;users&lt;br&gt;  id · email · username · hashed_password&lt;br&gt;  role (admin|manager|viewer)&lt;br&gt;  is_active · last_login&lt;br&gt;&lt;br&gt;refresh_tokens&lt;br&gt;  token · user_id · expires_at · revoked&lt;br&gt;&lt;br&gt;password_reset_tokens&lt;br&gt;  token · user_id · expires_at · used" vertex="1">
+          <mxGeometry height="252" width="275" x="145" y="712" as="geometry" />
+        </mxCell>
+        <mxCell id="std_ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Standards UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;DashboardPage — KPI cards, charts&lt;br&gt;StandardsPage — filter · sort · paginate&lt;br&gt;StandardDetailPage:&lt;br&gt;  · Parent / Amendment cross-links&lt;br&gt;  · Change History timeline&lt;br&gt;  · Documents tab&lt;br&gt;  · Purchase action · ISO.org link" vertex="1">
+          <mxGeometry height="162" width="275" x="430" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="std_api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Standards API&lt;/b&gt;&lt;br&gt;&lt;br&gt;GET /standards — filter · sort · paginate&lt;br&gt;GET /standards/:id — with amendments&lt;br&gt;GET /standards/:id/history&lt;br&gt;POST /standards/:id/purchase&lt;br&gt;PATCH /standards/:id&lt;br&gt;GET /dashboard/stats" vertex="1">
+          <mxGeometry height="138" width="275" x="430" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="std_logic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Standards Service&lt;/b&gt;&lt;br&gt;&lt;br&gt;list_standards() — filter + sort&lt;br&gt;get_standard() — single record&lt;br&gt;get_amendments() — child records&lt;br&gt;  via parent_standard_id FK&lt;br&gt;get_standard_history() — timeline&lt;br&gt;purchase_standard() — mark bought&lt;br&gt;_classify_event_from_hint() — new / updated&lt;br&gt;  / amended / withdrawn / replaced" vertex="1">
+          <mxGeometry height="187" width="275" x="430" y="488" as="geometry" />
+        </mxCell>
+        <mxCell id="std_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Standards Data&lt;/b&gt;&lt;br&gt;&lt;br&gt;standards&lt;br&gt;  iso_reference · title · edition&lt;br&gt;  status (active|revised|amended|withdrawn|replaced|under_review)&lt;br&gt;  stage_code · stage_name · published_date&lt;br&gt;  parent_standard_id (self-ref FK)&lt;br&gt;  content_hash (SHA-256)&lt;br&gt;&lt;br&gt;standard_history&lt;br&gt;  event_type · source (rss|manual)&lt;br&gt;  old_value · new_value (JSON snapshots)" vertex="1">
+          <mxGeometry height="252" width="275" x="430" y="712" as="geometry" />
+        </mxCell>
+        <mxCell id="feed_ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Feed Management UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;FeedsPage:&lt;br&gt;  · Add/Edit/Delete RSS feeds&lt;br&gt;  · Daily or Weekly schedule&lt;br&gt;  · Day-of-week selector (weekly)&lt;br&gt;  · Poll Now button (manual trigger)&lt;br&gt;SchedulePage — Beat schedule viewer" vertex="1">
+          <mxGeometry height="162" width="275" x="715" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="feed_api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Feeds API&lt;/b&gt;&lt;br&gt;&lt;br&gt;GET /feeds — list all feeds&lt;br&gt;POST /feeds — create feed&lt;br&gt;PATCH /feeds/:id — update schedule&lt;br&gt;DELETE /feeds/:id — remove feed&lt;br&gt;POST /feeds/:id/poll — manual trigger&lt;br&gt;  → dispatches Celery task to Redis" vertex="1">
+          <mxGeometry height="138" width="275" x="715" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="feed_logic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;RSS Polling Engine (Celery: feeds queue)&lt;/b&gt;&lt;br&gt;&lt;br&gt;poll_all_feeds() — Beat fan-out dispatcher&lt;br&gt;poll_feed(feed_id) — per-feed task&lt;br&gt;  → fetch via rss2json.com API (httpx)&lt;br&gt;  → feedparser parse entries&lt;br&gt;  → parse_iso_entry():&lt;br&gt;      _REFERENCE_RE (36 ISO/IEC/IEEE variants)&lt;br&gt;      _TITLE_AMD_PREFIX_RE (amendment detect)&lt;br&gt;      _STAGE_NAME_MAP (36 stage codes)&lt;br&gt;  → _process_entry(): new / update / skip&lt;br&gt;      content_hash (SHA-256) change detect&lt;br&gt;      auto-link parent_standard_id" vertex="1">
+          <mxGeometry height="187" width="275" x="715" y="488" as="geometry" />
+        </mxCell>
+        <mxCell id="feed_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Feed Data&lt;/b&gt;&lt;br&gt;&lt;br&gt;rss_feeds&lt;br&gt;  url · name · tc_committee&lt;br&gt;  schedule_type (daily|weekly)&lt;br&gt;  schedule_hour · schedule_day_of_week&lt;br&gt;  is_enabled · last_polled_at&lt;br&gt;  last_poll_status (pending|ok|failed)&lt;br&gt;  failure_count&lt;br&gt;&lt;br&gt;celery_periodic_task (Beat schedule)&lt;br&gt;celery_crontab_schedule (cron expr)&lt;br&gt;celery_schedules (UI wrapper model)" vertex="1">
+          <mxGeometry height="252" width="275" x="715" y="712" as="geometry" />
+        </mxCell>
+        <mxCell id="notif_ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Notifications UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;NotificationBell component:&lt;br&gt;  · Unread count badge&lt;br&gt;  · Poll every 30 s&lt;br&gt;  · Mark as read / mark all read&lt;br&gt;Notification dropdown list&lt;br&gt;ToastContext — success / error toasts" vertex="1">
+          <mxGeometry height="162" width="275" x="1000" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="notif_api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Notifications API&lt;/b&gt;&lt;br&gt;&lt;br&gt;GET /notifications — paginated list&lt;br&gt;GET /notifications/unread-count&lt;br&gt;PATCH /notifications/:id/read&lt;br&gt;PATCH /notifications/read-all&lt;br&gt;GET/POST /distribution-lists&lt;br&gt;GET/POST/DELETE /distribution-lists/:id/members" vertex="1">
+          <mxGeometry height="138" width="275" x="1000" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="notif_logic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Notification Engine (Celery: notifications queue)&lt;/b&gt;&lt;br&gt;&lt;br&gt;send_standard_notifications(standard_id, event_type)&lt;br&gt;  → query all active users&lt;br&gt;  → create Notification per user (in-app)&lt;br&gt;  → send_email_notification() per user&lt;br&gt;      aiosmtplib · HTML email templates&lt;br&gt;      STARTTLS :587&lt;br&gt;Severity: info | warning | critical&lt;br&gt;Event triggers: new · updated · amended&lt;br&gt;  · withdrawn · replaced · purchased" vertex="1">
+          <mxGeometry height="187" width="275" x="1000" y="488" as="geometry" />
+        </mxCell>
+        <mxCell id="notif_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Notification Data&lt;/b&gt;&lt;br&gt;&lt;br&gt;notifications&lt;br&gt;  user_id · event_type · severity&lt;br&gt;  title · body · is_read&lt;br&gt;  related_standard_id (FK → standards)&lt;br&gt;&lt;br&gt;notification_trigger_mapping&lt;br&gt;  event_type → trigger rules&lt;br&gt;&lt;br&gt;distribution_lists&lt;br&gt;  name · description&lt;br&gt;distribution_list_members&lt;br&gt;  list_id · email · name · is_active" vertex="1">
+          <mxGeometry height="252" width="275" x="1000" y="712" as="geometry" />
+        </mxCell>
+        <mxCell id="doc_ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Documents UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;DocumentsTab (inside StandardDetailPage):&lt;br&gt;  · Upload modal — drag &amp; drop&lt;br&gt;  · File type + size display&lt;br&gt;  · Change notes field&lt;br&gt;  · Upload progress bar&lt;br&gt;  · Version list (Current / Archived)&lt;br&gt;  · Download · Soft-delete (admin)" vertex="1">
+          <mxGeometry height="162" width="275" x="1285" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="doc_api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Documents API&lt;/b&gt;&lt;br&gt;&lt;br&gt;GET /documents?standard_id=… — list&lt;br&gt;POST /documents/:standard_id/upload&lt;br&gt;  multipart/form-data · max 50 MB&lt;br&gt;GET /documents/:id/download&lt;br&gt;  Content-Disposition header&lt;br&gt;DELETE /documents/:id — soft delete&lt;br&gt;  (is_current = false)" vertex="1">
+          <mxGeometry height="138" width="275" x="1285" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="doc_logic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Document Service&lt;/b&gt;&lt;br&gt;&lt;br&gt;python-magic — MIME byte detection&lt;br&gt;Allowed: PDF · DOCX · XLSX · DOC · XLS&lt;br&gt;Max upload: 50 MB&lt;br&gt;Auto version_number (per standard)&lt;br&gt;is_current flag management&lt;br&gt;Storage backends:&lt;br&gt;  local → /app/storage/standards/&lt;br&gt;  s3 → boto3 PutObject / GetObject&lt;br&gt;Switch via STORAGE_BACKEND env var" vertex="1">
+          <mxGeometry height="187" width="275" x="1285" y="488" as="geometry" />
+        </mxCell>
+        <mxCell id="doc_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Document Data&lt;/b&gt;&lt;br&gt;&lt;br&gt;documents&lt;br&gt;  standard_id (FK → standards)&lt;br&gt;  filename · file_path&lt;br&gt;  file_size_bytes · mime_type&lt;br&gt;  version_number (auto)&lt;br&gt;  is_current (bool)&lt;br&gt;  change_notes&lt;br&gt;  uploaded_by (FK → users)&lt;br&gt;  uploaded_at&lt;br&gt;&lt;br&gt;Storage volume / S3 bucket&lt;br&gt;  binary files live outside DB" vertex="1">
+          <mxGeometry height="252" width="275" x="1285" y="712" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Admin UI&lt;/b&gt;&lt;br&gt;&lt;br&gt;AuditLogsPage — searchable event log&lt;br&gt;SMTPConfigPage — live send-test&lt;br&gt;DistributionListsPage — manage lists&lt;br&gt;UsersPage — create · edit · deactivate&lt;br&gt;All gated by requireAdmin route guard" vertex="1">
+          <mxGeometry height="162" width="275" x="1570" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Admin API&lt;/b&gt;&lt;br&gt;&lt;br&gt;GET /admin/audit-logs — paginated&lt;br&gt;GET /admin/worker-health — heartbeat&lt;br&gt;GET · POST /admin/smtp-config&lt;br&gt;POST /admin/smtp-config/test&lt;br&gt;GET · POST /admin/system-config&lt;br&gt;GET · POST · DELETE /admin/distribution-lists" vertex="1">
+          <mxGeometry height="138" width="275" x="1570" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_logic" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Admin / System Logic (Celery: maintenance queue)&lt;/b&gt;&lt;br&gt;&lt;br&gt;Audit middleware — logs all write ops&lt;br&gt;  (POST · PATCH · DELETE requests)&lt;br&gt;refresh_worker_heartbeat() — 60 s&lt;br&gt;  writes timestamp to Redis key&lt;br&gt;cleanup_old_notifications() — daily 02:00&lt;br&gt;  archives notifications &gt; 90 days&lt;br&gt;SMTP config hot-reload from system_config&lt;br&gt;pydantic-settings — env var management" vertex="1">
+          <mxGeometry height="187" width="275" x="1570" y="488" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;spacingLeft=7;spacingTop=6;" value="&lt;b&gt;Admin Data&lt;/b&gt;&lt;br&gt;&lt;br&gt;audit_logs&lt;br&gt;  user_id · action · resource_type&lt;br&gt;  resource_id · method&lt;br&gt;  status_code · ip_address · user_agent&lt;br&gt;&lt;br&gt;system_config&lt;br&gt;  key · value (JSON) — SMTP settings,&lt;br&gt;  rate limits, feature flags&lt;br&gt;&lt;br&gt;Redis — worker:heartbeat key&lt;br&gt;  (worker health timestamp)" vertex="1">
+          <mxGeometry height="252" width="275" x="1570" y="712" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_rss2json" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=center;" value="&lt;b&gt;rss2json.com&lt;/b&gt;&lt;br&gt;RSS → JSON proxy&lt;br&gt;Bypasses Cloudflare&lt;br&gt;API key required" vertex="1">
+          <mxGeometry height="72" width="175" x="1865" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_iso" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=center;" value="&lt;b&gt;ISO.org / IEC.ch&lt;/b&gt;&lt;br&gt;Source RSS feeds&lt;br&gt;(internet · read-only)" vertex="1">
+          <mxGeometry height="60" width="175" x="1865" y="198" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_smtp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" value="&lt;b&gt;SMTP Relay&lt;/b&gt;&lt;br&gt;AWS SES / SendGrid&lt;br&gt;aiosmtplib · STARTTLS&lt;br&gt;HTML email templates" vertex="1">
+          <mxGeometry height="72" width="175" x="1865" y="564" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_s3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" value="&lt;b&gt;AWS S3&lt;/b&gt;&lt;br&gt;ists-documents-prod&lt;br&gt;Optional document store&lt;br&gt;STORAGE_BACKEND=s3" vertex="1">
+          <mxGeometry height="72" width="175" x="1865" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_redis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=center;" value="&lt;b&gt;Redis 7&lt;/b&gt;&lt;br&gt;Celery broker&lt;br&gt;+ result backend&lt;br&gt;worker heartbeat key" vertex="1">
+          <mxGeometry height="72" width="175" x="1865" y="488" as="geometry" />
+        </mxCell>
+        <mxCell id="wf_poll" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=6;spacingTop=5;fontStyle=2;" value="&lt;b&gt;① RSS Polling Workflow&lt;/b&gt;&lt;br&gt;Beat fires poll_all_feeds() on schedule → poll_feed() per feed → rss2json.com → parse_iso_entry() → _process_entry() → write standard + history → trigger send_standard_notifications()" vertex="1">
+          <mxGeometry height="52" width="840" x="715" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="wf_auth" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=6;spacingTop=5;fontStyle=2;" value="&lt;b&gt;② Request Auth Flow&lt;/b&gt;&lt;br&gt;Every protected API route: Bearer JWT → python-jose verify → extract role → role-based access check → execute handler" vertex="1">
+          <mxGeometry height="52" width="560" x="145" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="wf_doc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFDE0;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=6;spacingTop=5;fontStyle=2;" value="&lt;b&gt;③ Document Upload Flow&lt;/b&gt;&lt;br&gt;Upload modal → POST multipart → python-magic MIME check → auto version → save to local/S3 → Notification dispatched" vertex="1">
+          <mxGeometry height="52" width="570" x="1285" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" edge="1" parent="1" source="actor_admin" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;endFill=0;fontSize=9;fontStyle=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="auth_ui" value="login / manage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" edge="1" parent="1" source="actor_manager" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;endFill=0;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="auth_ui" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea3" edge="1" parent="1" source="actor_viewer" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;endFill=0;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="std_ui" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef1" edge="1" parent="1" source="feed_logic" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;startArrow=none;fontSize=9;fontStyle=2;dashed=0;strokeColor=#d79b00;fontColor=#a06000;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="notif_logic" value="after standard detected:&#xa;trigger notifications">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef2" edge="1" parent="1" source="feed_logic" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=0;fontSize=9;fontStyle=2;dashed=1;strokeColor=#9673a6;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="ext_rss2json" value="HTTP GET (httpx)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef3" edge="1" parent="1" source="ext_rss2json" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=0;fontSize=9;fontStyle=2;dashed=1;strokeColor=#9673a6;" target="ext_iso" value="fetch RSS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef4" edge="1" parent="1" source="notif_logic" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=0;fontSize=9;fontStyle=2;dashed=1;strokeColor=#82b366;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="ext_smtp" value="aiosmtplib">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef5" edge="1" parent="1" source="doc_logic" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=0;fontSize=9;fontStyle=2;dashed=1;strokeColor=#d6b656;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="ext_s3" value="boto3 (optional)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef6" edge="1" parent="1" source="admin_logic" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=0;startArrow=block;startFill=0;fontSize=9;fontStyle=2;strokeColor=#b85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="ext_redis" value="Celery broker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" edge="1" parent="1" source="std_data" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=ERmany;startArrow=ERone;fontSize=9;fontStyle=2;strokeColor=#82b366;exitX=1;exitY=0.4;exitDx=0;exitDy=0;entryX=0;entryY=0.4;entryDx=0;entryDy=0;" target="notif_data" value="related_standard_id FK">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed2" edge="1" parent="1" source="std_data" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=ERmany;startArrow=ERone;fontSize=9;fontStyle=2;strokeColor=#d6b656;exitX=1;exitY=0.6;exitDx=0;exitDy=0;entryX=0;entryY=0.6;entryDx=0;entryDy=0;" target="doc_data" value="standard_id FK">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed3" edge="1" parent="1" source="std_data" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=ERmany;startArrow=ERone;fontSize=9;fontStyle=2;strokeColor=#6c8ebf;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="std_data" value="parent_standard_id (self-ref)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="567" y="1010" />
+              <mxPoint x="540" y="1010" />
+              <mxPoint x="540" y="700" />
+              <mxPoint x="567" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

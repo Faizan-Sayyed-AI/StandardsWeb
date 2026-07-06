@@ -43,19 +43,43 @@ export interface HistoryItem {
   created_at: string;
 }
 
+export interface StandardVersion {
+  id: string;
+  iso_reference: string;
+  stage_code: string | null;
+  stage_name: string | null;
+  status: string;
+  published_date: string | null;
+  edition: string | null;
+  is_purchased: boolean;
+}
+
+export interface StandardGrouped extends Standard {
+  base_reference: string | null;
+  versions: StandardVersion[];
+  versions_count: number;
+}
+
 export interface StandardsListParams {
   page?: number;
   page_size?: number;
   search?: string;
   status?: string;
   tc_committee?: string;
+  stage?: string;
   is_purchased?: boolean;
   sort_by?: string;
   sort_order?: "asc" | "desc";
+  grouped?: boolean;
 }
 
-export async function listStandards(params: StandardsListParams = {}): Promise<Page<Standard>> {
-  const { data } = await api.get<Page<Standard>>("/api/v1/standards", { params });
+export async function listStandards(params: StandardsListParams = {}): Promise<Page<StandardGrouped>> {
+  const { data } = await api.get<Page<StandardGrouped>>("/api/v1/standards", { params });
+  return data;
+}
+
+export async function listCommittees(): Promise<string[]> {
+  const { data } = await api.get<string[]>("/api/v1/standards/committees");
   return data;
 }
 

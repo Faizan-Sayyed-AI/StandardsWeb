@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle, Clock, Loader2, Play, Plus, RefreshCw, Rss,
   ToggleRight, Trash2, XCircle,
 } from "lucide-react";
-import { listFeeds, createFeed, updateFeed, deleteFeed, triggerPoll, type FeedCreate } from "@/api/feeds";
+import { listFeeds, createFeed, updateFeed, deleteFeed, triggerPoll, type Feed, type FeedCreate } from "@/api/feeds";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,18 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/contexts/ToastContext";
 import { formatDateTime, timeAgo } from "@/lib/utils";
+
+// How long to wait for a manually-triggered poll to actually complete before
+// giving up and telling the user to check back later. Feed fetches usually
+// finish in a few seconds, but a slow/hanging upstream RSS source can take
+// much longer — this bounds how long we keep polling for the result.
+const POLL_WATCH_TIMEOUT_MS = 45_000;
+const POLL_WATCH_INTERVAL_MS = 2_000;
+// How long the inline "Fetched successfully" / "Fetch failed" badge stays
+// visible on the row after a watched poll completes.
+const JUST_FETCHED_BADGE_MS = 8_000;
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Monday" },
@@ -42,16 +53,76 @@ const DEFAULT_FORM: FeedCreate = {
 
 export function FeedsPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<FeedCreate>(DEFAULT_FORM);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // pollingFeed: the feed we're actively watching for a manually-triggered
+  // poll to complete. pollBaseline: that feed's last_polled_at at the moment
+  // we triggered it — completion is detected when the field changes, since
+  // there's no dedicated task-status endpoint to poll instead.
   const [pollingFeed, setPollingFeed] = useState<string | null>(null);
+  const pollBaselineRef = useRef<string | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Recently-completed watched polls, shown as an inline badge on the row
+  // for a few seconds so a successful fetch is visibly confirmed, not just
+  // implied by the persistent Status column updating silently.
+  const [justFetched, setJustFetched] = useState<Record<string, "ok" | "failed">>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ["feeds", page],
     queryFn: () => listFeeds(page, 20),
+    // While watching a manually-triggered poll, refetch frequently so we can
+    // detect completion (last_polled_at changing) without the user reloading.
+    refetchInterval: pollingFeed ? POLL_WATCH_INTERVAL_MS : false,
   });
+
+  const stopWatchingPoll = () => {
+    setPollingFeed(null);
+    pollBaselineRef.current = null;
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  };
+
+  // Detect completion of the watched poll: last_polled_at moving past the
+  // baseline captured right before it was triggered.
+  useEffect(() => {
+    if (!pollingFeed || !data) return;
+    const feed = data.items.find((f) => f.id === pollingFeed);
+    if (!feed) return;
+    if (feed.last_polled_at && feed.last_polled_at !== pollBaselineRef.current) {
+      const outcome: "ok" | "failed" = feed.last_poll_status === "failed" ? "failed" : "ok";
+      toast(
+        outcome === "ok"
+          ? { title: "Feed fetched successfully", description: `"${feed.name}" was polled successfully.` }
+          : {
+              title: "Feed fetch failed",
+              description: `"${feed.name}" failed to fetch (failure count: ${feed.failure_count}).`,
+              variant: "destructive",
+            }
+      );
+      setJustFetched((prev) => ({ ...prev, [feed.id]: outcome }));
+      setTimeout(() => {
+        setJustFetched((prev) => {
+          const { [feed.id]: _removed, ...rest } = prev;
+          return rest;
+        });
+      }, JUST_FETCHED_BADGE_MS);
+      stopWatchingPoll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, pollingFeed]);
+
+  // Clear any in-flight watch timeout if the page unmounts mid-poll.
+  useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, []);
 
   const createMutation = useMutation({
     mutationFn: createFeed,
@@ -77,17 +148,36 @@ export function FeedsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["feeds"] }),
   });
 
-  const handlePoll = async (id: string) => {
-    setPollingFeed(id);
+  const handlePoll = async (id: string, feed: Feed) => {
     try {
-      const result = await triggerPoll(id);
-      alert(`Poll dispatched! Task ID: ${result.task_id}`);
+      await triggerPoll(id);
     } catch {
-      alert("Failed to trigger poll");
-    } finally {
-      setPollingFeed(null);
-      qc.invalidateQueries({ queryKey: ["feeds"] });
+      toast({
+        title: "Failed to trigger poll",
+        description: `Could not dispatch a poll for "${feed.name}". Try again in a moment.`,
+        variant: "destructive",
+      });
+      return;
     }
+
+    toast({
+      title: "Poll dispatched",
+      description: `Fetching "${feed.name}"… you'll be notified when it completes.`,
+    });
+
+    // Watch for completion (last_polled_at moving past this baseline).
+    pollBaselineRef.current = feed.last_polled_at;
+    setPollingFeed(id);
+    if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    pollTimeoutRef.current = setTimeout(() => {
+      toast({
+        title: "Still working",
+        description: `"${feed.name}" is taking longer than expected — check back in a bit.`,
+      });
+      stopWatchingPoll();
+    }, POLL_WATCH_TIMEOUT_MS);
+
+    qc.invalidateQueries({ queryKey: ["feeds"] });
   };
 
   const totalPages = data ? Math.ceil(data.total / 20) : 1;
@@ -167,10 +257,34 @@ export function FeedsPage() {
                           {feed.is_enabled ? "Active" : "Disabled"}
                         </span>
                       </div>
+                      {justFetched[feed.id] && (
+                        <div
+                          className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium animate-in fade-in ${
+                            justFetched[feed.id] === "ok"
+                              ? "bg-teal-500/15 text-teal-300 border border-teal-500/30"
+                              : "bg-red-500/15 text-red-300 border border-red-500/30"
+                          }`}
+                        >
+                          {justFetched[feed.id] === "ok" ? (
+                            <CheckCircle className="h-3 w-3" />
+                          ) : (
+                            <XCircle className="h-3 w-3" />
+                          )}
+                          {justFetched[feed.id] === "ok" ? "Fetched successfully" : "Fetch failed"}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-xs text-muted-foreground">
-                        {feed.last_polled_at ? timeAgo(feed.last_polled_at) : "Never"}
+                        {pollingFeed === feed.id ? (
+                          <span className="inline-flex items-center gap-1 text-indigo-300">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Fetching…
+                          </span>
+                        ) : feed.last_polled_at ? (
+                          timeAgo(feed.last_polled_at)
+                        ) : (
+                          "Never"
+                        )}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
@@ -186,7 +300,7 @@ export function FeedsPage() {
                           size="icon"
                           title="Poll now"
                           disabled={pollingFeed === feed.id}
-                          onClick={() => handlePoll(feed.id)}
+                          onClick={() => handlePoll(feed.id, feed)}
                           className="h-7 w-7 text-muted-foreground hover:text-teal-400"
                         >
                           {pollingFeed === feed.id ? (

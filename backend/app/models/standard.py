@@ -64,12 +64,14 @@ class Standard(AsyncBase):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     purchase_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_feed_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("rss_feeds.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # M2: SHA-256 fingerprint of RSS entry fields used for change detection.
@@ -78,6 +80,7 @@ class Standard(AsyncBase):
     stage_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     stage_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     published_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    base_reference: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     parent_standard_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("standards.id", ondelete="SET NULL"),

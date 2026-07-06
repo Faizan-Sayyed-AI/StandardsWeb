@@ -23,13 +23,17 @@ export function SMTPConfigPage() {
     queryFn: getSMTPConfig,
   });
 
-  // Populate state on load
+  // Populate state on load. SMTP_PASSWORD is intentionally left out — the
+  // API only ever returns it masked ("********"), and loading that into an
+  // editable field means saving any unrelated change would silently resend
+  // the mask as the new password, overwriting the real one. Leaving the
+  // field blank (with a placeholder) and having the backend treat a blank
+  // submission as "keep the current password" avoids that trap.
   useEffect(() => {
     if (config) {
       setHost(config.SMTP_HOST);
       setPort(config.SMTP_PORT);
       setUser(config.SMTP_USER);
-      setPassword(config.SMTP_PASSWORD ?? "");
       setUseTls(config.SMTP_USE_TLS);
       setFromAddress(config.SMTP_FROM_ADDRESS);
     }
@@ -37,11 +41,11 @@ export function SMTPConfigPage() {
 
   const saveMutation = useMutation({
     mutationFn: updateSMTPConfig,
-    onSuccess: (newConfig) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["smtp-config"] });
       setSuccessMsg("SMTP configuration saved successfully!");
       setErrorMsg(null);
-      setPassword(newConfig.SMTP_PASSWORD ?? "");
+      setPassword("");
       setTimeout(() => setSuccessMsg(null), 5000);
     },
     onError: (err: any) => {
@@ -158,7 +162,7 @@ export function SMTPConfigPage() {
                 <Input
                   id="smtp-pass"
                   type="password"
-                  placeholder={config?.SMTP_PASSWORD ? "******** (masked)" : "Enter password"}
+                  placeholder={config?.SMTP_PASSWORD ? "Leave blank to keep current password" : "Enter password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />

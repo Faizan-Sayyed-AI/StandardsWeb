@@ -12,6 +12,16 @@ function cronToHuman(cron: string, scheduleType: string, hour: number, dow?: num
   return `Every ${days[dow ?? 0]} at ${String(hour).padStart(2, "0")}:00 UTC`;
 }
 
+// This app's schedule_day_of_week uses 0=Monday..6=Sunday (see DAYS_OF_WEEK
+// in FeedsPage.tsx), which doesn't match standard cron's day-of-week field
+// (0/7=Sunday, 1=Monday..6=Saturday) — see the matching conversion in
+// backend/app/services/feed_service.py's _cron_from_schedule(). Without this,
+// the raw cron string shown below would silently disagree with the schedule
+// actually installed on Celery Beat.
+function toCronDayOfWeek(appDayOfWeek: number): number {
+  return (appDayOfWeek + 1) % 7;
+}
+
 export function SchedulePage() {
   const { data, isLoading } = useQuery({
     queryKey: ["feeds", 1],
@@ -128,7 +138,7 @@ export function SchedulePage() {
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {`0 ${feed.schedule_hour} * * ${
-                        feed.schedule_type === "daily" ? "*" : (feed.schedule_day_of_week ?? 0)
+                        feed.schedule_type === "daily" ? "*" : toCronDayOfWeek(feed.schedule_day_of_week ?? 0)
                       }`}
                     </p>
                   </div>

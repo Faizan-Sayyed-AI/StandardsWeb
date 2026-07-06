@@ -11,26 +11,32 @@ DELETE /users/{id}    → 204 No Content
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.models.user import UserRole
 
 
 class UserCreate(BaseModel):
-    email: str = Field(min_length=3, max_length=255)
+    email: EmailStr = Field(max_length=255)
     username: str = Field(min_length=3, max_length=100)
-    password: str = Field(min_length=8, description="Plain-text password (hashed server-side)")
+    password: str = Field(
+        min_length=8,
+        max_length=72,  # bcrypt silently truncates beyond 72 bytes — cap input instead
+        description="Plain-text password (hashed server-side)",
+    )
     role: UserRole = Field(default=UserRole.viewer)
 
 
 class UserUpdate(BaseModel):
     """All fields are optional — only provided fields are updated (PATCH semantics)."""
 
-    email: str | None = Field(default=None, min_length=3, max_length=255)
+    email: EmailStr | None = Field(default=None, max_length=255)
     username: str | None = Field(default=None, min_length=3, max_length=100)
     role: UserRole | None = None
     is_active: bool | None = None
-    password: str | None = Field(default=None, min_length=8, description="New plain-text password")
+    password: str | None = Field(
+        default=None, min_length=8, max_length=72, description="New plain-text password"
+    )
 
 
 class UserResponse(BaseModel):

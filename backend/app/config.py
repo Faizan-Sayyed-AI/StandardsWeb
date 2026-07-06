@@ -7,7 +7,10 @@ Access the singleton via: from app.config import settings
 
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_DEFAULT_SECRET_KEY = "dev-secret-change-me-in-production-use-32-random-bytes"
 
 
 class Settings(BaseSettings):
@@ -17,7 +20,7 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=True,
     )
-
+    RSS2JSON_API_KEY: str = ""
     # ── Database ──────────────────────────────────────────
     # Async URL used by FastAPI / SQLAlchemy (asyncpg driver)
     DATABASE_URL: str = "postgresql+asyncpg://ists:ists_dev_password@localhost:5432/ists"
@@ -28,7 +31,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── Security ──────────────────────────────────────────
-    SECRET_KEY: str = "dev-secret-change-me-in-production-use-32-random-bytes"
+    SECRET_KEY: str = _INSECURE_DEFAULT_SECRET_KEY
     ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 8
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -54,9 +57,6 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed frontend origins
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
-    # ── RSS2JSON ──────────────────────────────────────────
-    RSS2JSON_API_KEY: str = ""
-
     # ── App ───────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
@@ -73,6 +73,24 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT.lower() == "development"
+
+    @model_validator(mode="after")
+    def _reject_insecure_secret_in_production(self) -> "Settings":
+        """
+        Fail fast at startup rather than silently issuing forgeable JWTs.
+
+        SECRET_KEY's default value is public (it's committed in this file and
+        in .env.example), so if an operator forgets to set a real value in a
+        non-development deployment, every JWT this app issues is forgeable by
+        anyone who has read this source file.
+        """
+        if not self.is_development and self.SECRET_KEY == _INSECURE_DEFAULT_SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY is still the insecure default value. "
+                "Set a real random SECRET_KEY env var before running with "
+                f"ENVIRONMENT={self.ENVIRONMENT!r}."
+            )
+        return self
 
 
 @lru_cache

@@ -27,6 +27,16 @@ export function formatDateTime(dateStr: string | null | undefined): string {
   });
 }
 
+export function formatTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 export function timeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);

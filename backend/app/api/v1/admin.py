@@ -11,7 +11,11 @@ from app.api.deps import AdminUser, DBSession
 from app.config import settings
 from app.celery_app import celery
 from app.core.exceptions import ConflictError, NotFoundError
-from app.core.smtp_config import get_active_smtp_settings, set_active_smtp_settings
+from app.core.smtp_config import (
+    MASKED_PASSWORD_PLACEHOLDER,
+    get_active_smtp_settings,
+    set_active_smtp_settings,
+)
 from app.models.distribution_list import DistributionList
 from app.models.notification_mapping import NotificationTriggerMapping
 from app.models.audit_log import AuditLog
@@ -27,6 +31,8 @@ from app.schemas.admin import (
 )
 from app.schemas.pagination import Page
 from app.services.audit_service import write_audit_log
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["Admin Settings"])
 
@@ -58,9 +64,16 @@ async def update_smtp_config(
     current_settings = await get_active_smtp_settings(db)
     new_settings = payload.model_dump()
 
-    # Log only updated keys to audit log, redacting values
+    # Log only updated keys to audit log, redacting values.
+    # SMTP_PASSWORD needs special handling: a blank or masked-placeholder
+    # value means "leave unchanged" (see set_active_smtp_settings), so it's
+    # not actually a change even though it differs from the stored real value.
     changed_keys = []
     for k, v in new_settings.items():
+        if k == "SMTP_PASSWORD":
+            if v not in ("", MASKED_PASSWORD_PLACEHOLDER) and v != current_settings.get(k):
+                changed_keys.append(k)
+            continue
         if current_settings.get(k) != v:
             changed_keys.append(k)
 
@@ -77,8 +90,9 @@ async def update_smtp_config(
         payload={"updated_keys": changed_keys},
     )
 
-    # Return masked
-    return SMTPConfigResponse.from_dict_masked(new_settings)
+    # Return masked, reflecting what was actually persisted
+    final_settings = await get_active_smtp_settings(db)
+    return SMTPConfigResponse.from_dict_masked(final_settings)
 
 
 @router.get(

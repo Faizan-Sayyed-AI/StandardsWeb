@@ -51,6 +51,7 @@ class Document(AsyncBase):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
+        index=True,
     )
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

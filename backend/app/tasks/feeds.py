@@ -62,6 +62,35 @@ _REFERENCE_RE = re.compile(
 
 _EDITION_RE = re.compile(r":(\d{4})\b")
 
+
+def _extract_base_reference(iso_reference: str) -> str:
+    """
+    Extract the base standard number from any ISO reference variant.
+
+    Examples:
+      'ISO 3651-2:1998'  → '3651-2'
+      'ISO/WD 3651-2'    → '3651-2'
+      'ISO/CD 3651-2'    → '3651-2'
+      'ISO/TS 24971-2'   → '24971-2'
+      'ISO 13485:2016'   → '13485'
+      'IEC 62366-1:2015' → '62366-1'
+      'ISO 27874:2008/AMD 1:2025' → '27874'
+
+    Steps:
+      1. Remove org prefix: strip leading 'ISO', 'IEC', 'IEEE', '/TS', '/TR', '/WD', '/CD', '/AWI', '/NP', '/PAS' etc.
+      2. Extract the numeric part (digits, hyphens, dots) before any colon or slash
+      3. Return that numeric string
+    """
+    # Remove org prefix and type qualifiers
+    text = re.sub(
+        r'^(?:ISO|IEC|IEEE)(?:/(?:IEC|IEEE|TS|TR|WD|AWI|CD|NP|PAS|GUIDE))*\s*(?:TS|TR|WD|AWI|CD|NP|PAS|GUIDE)?\s*',
+        '', iso_reference, flags=re.IGNORECASE
+    ).strip()
+    # Extract base number before colon or slash
+    m = re.match(r'^([\d][\d\-\.]*)', text)
+    return m.group(1) if m else iso_reference
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Amendment detection helpers
 #
@@ -375,6 +404,7 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
             stage_code=parsed["stage"],
             stage_name=parsed["stage_name"],
             published_date=parsed["published_date"],
+            base_reference=_extract_base_reference(iso_ref),
         )
         session.add(standard)
         await session.flush()
@@ -451,6 +481,7 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
     standard.stage_code = parsed["stage"]
     standard.stage_name = parsed["stage_name"]
     standard.published_date = parsed["published_date"]
+    standard.base_reference = _extract_base_reference(iso_ref)
     if not standard.external_url and parsed["external_url"]:
         standard.external_url = parsed["external_url"]
 
@@ -575,7 +606,13 @@ async def _poll_feed_async(feed_id: str) -> dict:
 
         for entry in entries:
             try:
-                outcome, std_id = await _process_entry(entry, feed, session)
+                # A SAVEPOINT per entry: if _process_entry's flush fails (e.g. a
+                # duplicate iso_reference), only this entry's work rolls back —
+                # without it, the whole session's transaction is left aborted
+                # and every subsequent entry (and the final commit) fails too,
+                # silently discarding the rest of the batch's real changes.
+                async with session.begin_nested():
+                    outcome, std_id = await _process_entry(entry, feed, session)
             except Exception as exc:
                 log.warning(
                     "entry_processing_error",

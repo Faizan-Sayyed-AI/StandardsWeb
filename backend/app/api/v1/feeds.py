@@ -72,6 +72,11 @@ async def create_feed(
     feed = await feed_service.create_feed(
         body, db, actor_id=current_user.id, ip_address=_client_ip(request)
     )
+    # Commit before touching Beat's tables — sync_feed_beat_schedule writes
+    # on a separate, immediately-committed connection, so it must only run
+    # once this feed row is durably persisted (see feed_service.py).
+    await db.commit()
+    await feed_service.sync_feed_beat_schedule(feed)
     return FeedResponse.model_validate(feed)
 
 
@@ -110,6 +115,8 @@ async def update_feed(
     feed = await feed_service.update_feed(
         feed_id, body, db, actor_id=current_user.id, ip_address=_client_ip(request)
     )
+    await db.commit()
+    await feed_service.sync_feed_beat_schedule(feed)
     return FeedResponse.model_validate(feed)
 
 
@@ -132,6 +139,8 @@ async def delete_feed(
     await feed_service.delete_feed(
         feed_id, db, actor_id=current_user.id, ip_address=_client_ip(request)
     )
+    await db.commit()
+    await feed_service.delete_feed_beat_schedule(feed_id)
 
 
 @router.post(

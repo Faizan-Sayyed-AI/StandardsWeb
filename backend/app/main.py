@@ -21,25 +21,26 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 from sqlalchemy import text
 
 from app.api.v1 import router as v1_router
 from app.config import settings
 from app.core.exceptions import ISTSException
 from app.core.logging import setup_logging
-from app.core.middleware import RequestIDMiddleware, UnreadNotificationMiddleware
+from app.core.middleware import (
+    RequestIDMiddleware,
+    SecurityHeadersMiddleware,
+    UnreadNotificationMiddleware,
+)
+from app.core.rate_limit import limiter
 from app.database import engine
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 setup_logging()
 log = structlog.get_logger(__name__)
-
-# ── Rate limiter ──────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address, default_limits=[settings.RATE_LIMIT_DEFAULT])
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -86,10 +87,13 @@ app = FastAPI(
 # 1. Request ID (outermost — wraps everything)
 app.add_middleware(RequestIDMiddleware)
 
-# 2. Unread notification count header
+# 2. Security headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Unread notification count header
 app.add_middleware(UnreadNotificationMiddleware)
 
-# 3. CORS
+# 4. CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -99,7 +103,7 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "X-Unread-Notifications"],
 )
 
-# 4. Rate limiting
+# 5. Rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)

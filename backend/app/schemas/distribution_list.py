@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class DistributionListCreate(BaseModel):
@@ -14,7 +14,7 @@ class DistributionListUpdate(BaseModel):
 
 
 class DistributionListMemberCreate(BaseModel):
-    email: str = Field(..., min_length=3, max_length=255)
+    email: EmailStr = Field(..., max_length=255)
     name: str | None = Field(default=None, max_length=255)
     is_active: bool = True
 

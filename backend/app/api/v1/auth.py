@@ -16,6 +16,8 @@ The cookie approach is required by the React frontend (PRD M3 security requireme
 from fastapi import APIRouter, Request, Response, status
 
 from app.api.deps import DBSession
+from app.config import settings
+from app.core.rate_limit import limiter
 from app.schemas.auth import (
     AccessTokenResponse,
     LoginRequest,
@@ -54,7 +56,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         samesite="lax",
         path=_COOKIE_PATH,
         max_age=_COOKIE_MAX_AGE,
-        secure=False,  # set True in production (HTTPS only)
+        secure=not settings.is_development,  # HTTPS-only outside local dev
     )
 
 
@@ -69,6 +71,7 @@ def _clear_refresh_cookie(response: Response) -> None:
     status_code=status.HTTP_200_OK,
     summary="Login — returns access token, sets httpOnly refresh cookie",
 )
+@limiter.limit(settings.RATE_LIMIT_AUTH)
 async def login(
     body: LoginRequest, request: Request, response: Response, db: DBSession
 ) -> TokenResponse:
@@ -161,7 +164,8 @@ async def logout(
     status_code=status.HTTP_202_ACCEPTED,
     summary="Request a password reset email",
 )
-async def password_reset_request(body: PasswordResetRequest, db: DBSession) -> dict:
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+async def password_reset_request(body: PasswordResetRequest, request: Request, db: DBSession) -> dict:
     """
     Trigger a password reset email for the given address.
     Always returns 202 Accepted regardless of whether the email exists
@@ -177,7 +181,8 @@ async def password_reset_request(body: PasswordResetRequest, db: DBSession) -> d
     status_code=status.HTTP_200_OK,
     summary="Confirm password reset with token",
 )
-async def password_reset_confirm(body: PasswordResetConfirm, db: DBSession) -> dict:
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+async def password_reset_confirm(body: PasswordResetConfirm, request: Request, db: DBSession) -> dict:
     """
     Validate the reset token and set a new password.
     All existing sessions for the user are immediately revoked.

@@ -9,7 +9,7 @@ GET /standards/{id}/history → Page[StandardHistoryItem]
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.standard import StandardStatus
 from app.models.standard_history import EventSource, EventType
@@ -62,6 +62,29 @@ class StandardDetailWithAmendments(StandardDetail):
     """StandardDetail extended with linked amendment records."""
 
     amendments: list[StandardListItem] = []
+
+
+class StandardVersion(BaseModel):
+    """Lightweight projection of one non-primary version within a base-reference group."""
+
+    id: uuid.UUID
+    iso_reference: str
+    stage_code: str | None
+    stage_name: str | None
+    status: str
+    published_date: date | None
+    edition: str | None
+    is_purchased: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StandardGrouped(StandardListItem):
+    """StandardListItem extended with all versions of the same base reference."""
+
+    base_reference: str | None = None
+    versions: list[StandardVersion] = []
+    versions_count: int = 0
 
 
 class StandardHistoryItem(BaseModel):

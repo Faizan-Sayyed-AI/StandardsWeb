@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
-import { listStandards, type StandardsListParams } from "@/api/standards";
+import { BookOpen, ChevronDown, ChevronRight, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
+import { listCommittees, listStandards, type StandardGrouped, type StandardsListParams } from "@/api/standards";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,15 +35,6 @@ const SORT_OPTIONS = [
   { value: "status", label: "Status" },
 ];
 
-function matchesStageFilter(stageCode: string | null, filter: string): boolean {
-  if (!filter) return true;
-  if (!stageCode) return false;
-  if (filter.endsWith(".x")) {
-    return stageCode.startsWith(filter.replace(/\.x$/, "."));
-  }
-  return stageCode === filter;
-}
-
 export function StandardsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useState<StandardsListParams>({
@@ -56,10 +47,22 @@ export function StandardsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [committeeFilter, setCommitteeFilter] = useState("");
   const [stageFilter, setStageFilter] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const queryParams: StandardsListParams = {
     ...params,
     search: search.trim() || undefined,
+    tc_committee: committeeFilter || undefined,
+    stage: stageFilter || undefined,
   };
 
   const { data, isLoading } = useQuery({
@@ -68,24 +71,12 @@ export function StandardsPage() {
     placeholderData: (prev) => prev,
   });
 
-  const committees = useMemo(() => {
-    const seen = new Set<string>();
-    (data?.items ?? []).forEach((std) => {
-      if (std.tc_committee) seen.add(std.tc_committee);
-    });
-    return Array.from(seen).sort();
-  }, [data?.items]);
-
-  const filteredItems = useMemo(() => {
-    let items = data?.items ?? [];
-    if (committeeFilter) {
-      items = items.filter((std) => std.tc_committee === committeeFilter);
-    }
-    if (stageFilter) {
-      items = items.filter((std) => matchesStageFilter(std.stage_code, stageFilter));
-    }
-    return items;
-  }, [data?.items, committeeFilter, stageFilter]);
+  // Independent of the current page/filters, so the dropdown always lists
+  // every committee — not just the ones present on the currently loaded page.
+  const { data: committees = [] } = useQuery({
+    queryKey: ["standards", "committees"],
+    queryFn: listCommittees,
+  });
 
   const updateSort = (sortBy: string) => {
     setParams((p) => ({
@@ -196,7 +187,10 @@ export function StandardsPage() {
                 <div className="relative">
                   <select
                     value={committeeFilter}
-                    onChange={(e) => setCommitteeFilter(e.target.value)}
+                    onChange={(e) => {
+                      setCommitteeFilter(e.target.value);
+                      setParams((p) => ({ ...p, page: 1 }));
+                    }}
                     className="appearance-none min-w-[180px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">All Committees</option>
@@ -214,7 +208,10 @@ export function StandardsPage() {
                 <div className="relative">
                   <select
                     value={stageFilter}
-                    onChange={(e) => setStageFilter(e.target.value)}
+                    onChange={(e) => {
+                      setStageFilter(e.target.value);
+                      setParams((p) => ({ ...p, page: 1 }));
+                    }}
                     className="appearance-none min-w-[200px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     {STAGE_OPTIONS.map((opt) => (
@@ -273,6 +270,7 @@ export function StandardsPage() {
         <Table>
           <TableHeader>
             <TableRow className="border-b border-white/10 hover:bg-transparent">
+              <TableHead className="w-8" />
               <TableHead className="w-36">
                 <button
                   className="flex items-center gap-1 hover:text-foreground"
@@ -322,6 +320,7 @@ export function StandardsPage() {
             {isLoading ? (
               Array.from({ length: 10 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-64" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -332,9 +331,9 @@ export function StandardsPage() {
                   <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                 </TableRow>
               ))
-            ) : filteredItems.length === 0 ? (
+            ) : (data?.items.length ?? 0) === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-16 text-center">
+                <TableCell colSpan={9} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <BookOpen className="h-10 w-10 text-muted-foreground/30" />
                     <p className="text-sm font-medium text-muted-foreground">
@@ -347,53 +346,115 @@ export function StandardsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredItems.map((std) => (
-                <TableRow
-                  key={std.id}
-                  className="cursor-pointer hover:bg-white/4 transition-colors"
-                  onClick={() => navigate(`/standards/${std.id}`)}
-                >
-                  <TableCell>
-                    <span className="font-mono text-xs font-bold text-indigo-400 hover:underline">
-                      {std.iso_reference}
-                    </span>
-                  </TableCell>
-                  <TableCell className="max-w-xs">
-                    <p className="truncate text-foreground">{std.title}</p>
-                    {std.is_purchased && (
-                      <span className="inline-flex mt-0.5 items-center bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">
-                        ✓ Purchased
+              (data?.items ?? []).flatMap((std: StandardGrouped) => {
+                const groupKey = std.base_reference ?? std.id;
+                const hasVersions = std.versions_count > 1;
+                const expanded = hasVersions && expandedGroups.has(groupKey);
+
+                const primaryRow = (
+                  <TableRow
+                    key={std.id}
+                    className="cursor-pointer hover:bg-white/4 transition-colors"
+                    onClick={() => navigate(`/standards/${std.id}`)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {hasVersions && (
+                        <button
+                          onClick={() => toggleGroup(groupKey)}
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-all duration-200 ${
+                            expanded
+                              ? "bg-indigo-500/20 text-indigo-300"
+                              : "bg-slate-700 text-slate-300"
+                          }`}
+                        >
+                          {expanded ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3" />
+                          )}
+                          +{std.versions_count - 1} versions
+                        </button>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-xs font-bold text-indigo-400 hover:underline">
+                        {std.iso_reference}
                       </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-xs text-muted-foreground">
-                      {std.tc_committee ?? "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={std.status} />
-                  </TableCell>
-                  <TableCell>
-                    {std.stage_name ? (
-                      <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
-                        {std.stage_name}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-xs text-muted-foreground">{std.edition ?? "—"}</span>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {formatDate(std.published_date)}
-                  </TableCell>
-                  <TableCell className="text-right text-xs text-muted-foreground">
-                    {formatDate(std.updated_at)}
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <p className="truncate text-foreground">{std.title}</p>
+                      {std.is_purchased && (
+                        <span className="inline-flex mt-0.5 items-center bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          ✓ Purchased
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground">
+                        {std.tc_committee ?? "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={std.status} />
+                    </TableCell>
+                    <TableCell>
+                      {std.stage_name ? (
+                        <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
+                          {std.stage_name}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground">{std.edition ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {formatDate(std.published_date)}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {formatDate(std.updated_at)}
+                    </TableCell>
+                  </TableRow>
+                );
+
+                if (!expanded) return [primaryRow];
+
+                const versionRows = std.versions.map((v) => (
+                  <TableRow
+                    key={v.id}
+                    className="cursor-pointer border-l-2 border-indigo-500/30 ml-4 bg-slate-800/40 transition-all duration-200 hover:bg-slate-800/60"
+                    onClick={() => navigate(`/standards/${v.id}`)}
+                  >
+                    <TableCell />
+                    <TableCell>
+                      <span className="font-mono text-xs font-bold text-indigo-400 hover:underline">
+                        {v.iso_reference}
+                      </span>
+                    </TableCell>
+                    <TableCell colSpan={2} />
+                    <TableCell>
+                      <StatusBadge status={v.status} />
+                    </TableCell>
+                    <TableCell>
+                      {v.stage_name ? (
+                        <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
+                          {v.stage_name}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell />
+                    <TableCell className="text-xs text-muted-foreground">
+                      {formatDate(v.published_date)}
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                ));
+
+                return [primaryRow, ...versionRows];
+              })
             )}
           </TableBody>
         </Table>

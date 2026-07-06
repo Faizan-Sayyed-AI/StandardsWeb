@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, BookOpen, Calendar, Copy, Download, ExternalLink, FileText,
+  ArrowLeft, BookOpen, Calendar, Download, ExternalLink, FileText,
   GitBranch, Loader2, Package, ScrollText, Tag, Trash2, Upload, X,
 } from "lucide-react";
-import { getStandard, getStandardHistory, purchaseStandard, type Standard } from "@/api/standards";
+import { getStandard, getStandardHistory, purchaseStandard, type HistoryItem, type Standard } from "@/api/standards";
 import {
   listDocuments,
   uploadDocument,
@@ -21,44 +22,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDate, formatDateTime, timeAgo } from "@/lib/utils";
-
-// ── JSON snapshot block with copy-to-clipboard ────────────────────────────────
-
-function JsonSnapshot({ value }: { value: Record<string, unknown> }) {
-  const [copied, setCopied] = useState(false);
-  const text = JSON.stringify(value, null, 2);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  return (
-    <div className="mt-2 max-w-full overflow-hidden">
-      <div className="relative rounded-lg border border-slate-700/50 bg-slate-900/60 p-3">
-        <button
-          onClick={handleCopy}
-          title="Copy JSON"
-          className="absolute right-2 top-2 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:bg-white/8 hover:text-slate-200 transition-colors"
-        >
-          {copied ? (
-            <span className="text-teal-400">✓ Copied</span>
-          ) : (
-            <Copy className="h-3.5 w-3.5" />
-          )}
-        </button>
-        <div className="max-h-48 overflow-y-auto overflow-x-auto pr-10">
-          <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all">
-            {text}
-          </pre>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { cn, formatDate, formatDateTime, formatTime, timeAgo } from "@/lib/utils";
+import {
+  getEventMeta,
+  getSecondaryLine,
+  diffFields,
+  hasAmendmentFields,
+} from "@/lib/historyEvents";
 
 // ── History tab helpers ────────────────────────────────────────────────────────
 
@@ -77,6 +47,452 @@ const EVENT_COLORS: Record<string, string> = {
   replaced: "border-orange-500/30 bg-orange-500/10 text-orange-400",
   withdrawn: "border-red-500/30 bg-red-500/10 text-red-400",
 };
+
+// ── Timeline event styling ──────────────────────────────────────────────────
+
+const EVENT_DOT_COLORS: Record<string, string> = {
+  new: "bg-emerald-500",
+  updated: "bg-blue-500",
+  amended: "bg-amber-500",
+  withdrawn: "bg-red-500",
+  replaced: "bg-orange-500",
+  default: "bg-slate-500",
+};
+
+// ── Event badge: icon + plain-English label + derived secondary line ────────
+
+function EventBadge({ item }: { item: HistoryItem }) {
+  const meta = getEventMeta(item.event_type);
+  const secondary = getSecondaryLine(item);
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.badgeClass}`}
+      >
+        <span aria-hidden>{meta.icon}</span>
+        {meta.label}
+      </span>
+      {secondary && (
+        <span
+          className={`text-[10px] text-muted-foreground ${secondary.italic ? "italic" : ""}`}
+        >
+          {secondary.text}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── Snapshot modal: structured Before/After (or Initial State) view ─────────
+
+interface SnapshotRowProps {
+  label: string;
+  value: React.ReactNode;
+  changed?: boolean;
+}
+
+function SnapshotRow({ label, value, changed }: SnapshotRowProps) {
+  return (
+    <div
+      className={`flex items-baseline justify-between gap-3 rounded px-2 py-1.5 text-xs ${
+        changed ? "bg-amber-500/10" : ""
+      }`}
+    >
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-foreground text-right min-w-0">{value}</span>
+    </div>
+  );
+}
+
+function SnapshotFields({
+  value,
+  changedKeys,
+}: {
+  value: Record<string, unknown>;
+  changedKeys: Set<string>;
+}) {
+  const stage = value.stage != null ? String(value.stage) : null;
+  const stageName = value.stage_name != null ? String(value.stage_name) : null;
+
+  return (
+    <div className="space-y-0.5">
+      {typeof value.iso_reference === "string" && (
+        <SnapshotRow
+          label="ISO Reference"
+          value={value.iso_reference}
+          changed={changedKeys.has("iso_reference")}
+        />
+      )}
+      <SnapshotRow
+        label="Stage"
+        value={stage ? (stageName ? `${stage} (${stageName})` : stage) : "—"}
+        changed={changedKeys.has("stage") || changedKeys.has("stage_name")}
+      />
+      <SnapshotRow
+        label="Status"
+        value={
+          typeof value.status === "string" ? (
+            <StatusBadge status={value.status} />
+          ) : (
+            "—"
+          )
+        }
+        changed={changedKeys.has("status")}
+      />
+      <SnapshotRow
+        label="Title"
+        value={
+          <span
+            className="line-clamp-2 text-left"
+            title={typeof value.title === "string" ? value.title : undefined}
+          >
+            {typeof value.title === "string" ? value.title : "—"}
+          </span>
+        }
+        changed={changedKeys.has("title")}
+      />
+      <SnapshotRow
+        label="Edition"
+        value={value.edition != null ? String(value.edition) : "—"}
+        changed={changedKeys.has("edition")}
+      />
+      <SnapshotRow
+        label="TC Committee"
+        value={value.tc_committee != null ? String(value.tc_committee) : "—"}
+        changed={changedKeys.has("tc_committee")}
+      />
+      <SnapshotRow
+        label="Stage Date"
+        value={
+          typeof value.published_date === "string"
+            ? formatDate(value.published_date)
+            : "—"
+        }
+        changed={changedKeys.has("published_date")}
+      />
+    </div>
+  );
+}
+
+function AmendmentFields({ value }: { value: Record<string, unknown> }) {
+  return (
+    <div className="space-y-0.5">
+      <SnapshotRow
+        label="Amendment Reference"
+        value={value.amendment_reference != null ? String(value.amendment_reference) : "—"}
+      />
+      <SnapshotRow
+        label="Amendment Stage"
+        value={value.amendment_stage != null ? String(value.amendment_stage) : "—"}
+      />
+      <SnapshotRow
+        label="Amendment Stage Name"
+        value={value.amendment_stage_name != null ? String(value.amendment_stage_name) : "—"}
+      />
+      <SnapshotRow
+        label="Amendment Status"
+        value={
+          typeof value.amendment_status === "string" ? (
+            <StatusBadge status={value.amendment_status} />
+          ) : (
+            "—"
+          )
+        }
+      />
+      <SnapshotRow
+        label="Stage Date"
+        value={
+          typeof value.published_date === "string"
+            ? formatDate(value.published_date)
+            : "—"
+        }
+      />
+    </div>
+  );
+}
+
+function SnapshotModal({
+  item,
+  onClose,
+}: {
+  item: HistoryItem | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!item) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [item, onClose]);
+
+  if (!item) return null;
+
+  const meta = getEventMeta(item.event_type);
+  const isRss = item.source?.toLowerCase() === "rss";
+  const isInitial = item.old_value === null;
+  const isAmendment = item.event_type === "amended" && hasAmendmentFields(item.new_value);
+  const changedKeys = diffFields(item.old_value, item.new_value);
+
+  // Rendered via portal: an animated ancestor (TabsContent's fade-in wrapper)
+  // applies a CSS transform, which creates a new containing block for
+  // position:fixed descendants and would confine the overlay to that box
+  // instead of the full viewport.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-all duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative mx-auto mt-20 w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-900 shadow-2xl transition-all duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 border-b border-white/8 p-5">
+          <div className="flex items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.badgeClass}`}
+            >
+              <span aria-hidden>{meta.icon}</span>
+              {meta.label}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {formatDateTime(item.created_at)}
+            </span>
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                isRss
+                  ? "border-slate-500/30 bg-slate-500/10 text-slate-300"
+                  : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
+              }`}
+            >
+              Via {isRss ? "RSS" : "Manual"}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/8 hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5">
+          {isInitial && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Initial State
+              </p>
+              <SnapshotFields value={item.new_value} changedKeys={new Set()} />
+            </div>
+          )}
+
+          {!isInitial && isAmendment && <AmendmentFields value={item.new_value} />}
+
+          {!isInitial && !isAmendment && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="mb-2 rounded bg-red-950/30 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-red-300">
+                  Before
+                </p>
+                <SnapshotFields value={item.old_value ?? {}} changedKeys={changedKeys} />
+              </div>
+              <div>
+                <p className="mb-2 rounded bg-green-950/30 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-green-300">
+                  After
+                </p>
+                <SnapshotFields value={item.new_value} changedKeys={changedKeys} />
+              </div>
+            </div>
+          )}
+
+          {item.notes && (
+            <p className="mt-4 text-xs text-muted-foreground italic">{item.notes}</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end border-t border-white/8 p-4">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── Change History: horizontal timeline (desktop) + vertical fallback (mobile) ──
+
+interface TimelineNodeContentProps {
+  item: HistoryItem;
+  onView: () => void;
+}
+
+function TimelineNodeContent({ item, onView }: TimelineNodeContentProps) {
+  const isRss = item.source?.toLowerCase() === "rss";
+
+  return (
+    <div className="flex w-[180px] shrink-0 flex-col items-center gap-1.5 px-2 text-center">
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <EventBadge item={item} />
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+            isRss
+              ? "border-slate-500/30 bg-slate-500/10 text-slate-300"
+              : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
+          }`}
+        >
+          Via {isRss ? "RSS" : "Manual"}
+        </span>
+      </div>
+      <p className="text-xs font-semibold text-foreground">{formatDate(item.created_at)}</p>
+      <p className="text-[10px] text-muted-foreground">{formatTime(item.created_at)}</p>
+      <button
+        onClick={onView}
+        className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        View Snapshot
+      </button>
+    </div>
+  );
+}
+
+function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
+  const [openItem, setOpenItem] = useState<HistoryItem | null>(null);
+
+  if (items.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16 text-center">
+        <p className="text-sm text-muted-foreground">No change history recorded yet.</p>
+      </div>
+    );
+  }
+
+  // Oldest → newest, left → right
+  const sorted = [...items].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  return (
+    <>
+      {/* Desktop: horizontal timeline */}
+      <div className="hidden md:block">
+        <div className={cn("relative pb-2", sorted.length > 5 && "overflow-x-auto")}>
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: `repeat(${sorted.length}, minmax(180px, 1fr))`,
+              gridTemplateRows: "auto 2rem auto",
+              width: sorted.length > 5 ? `${sorted.length * 180}px` : "100%",
+            }}
+          >
+            {/* Full-width line running through the middle */}
+            <div
+              className="col-start-1 row-start-2 self-center h-px bg-white/10"
+              style={{ gridColumnEnd: `span ${sorted.length}` }}
+            />
+
+            {sorted.map((item, index) => {
+              const isAbove = index % 2 === 0;
+              const dotColor = EVENT_DOT_COLORS[item.event_type] ?? EVENT_DOT_COLORS.default;
+
+              return (
+                <div key={item.id} className="contents">
+                  {/* Above-the-line slot */}
+                  <div
+                    className="row-start-1 flex flex-col items-center justify-end gap-2"
+                    style={{ gridColumnStart: index + 1 }}
+                  >
+                    {isAbove && (
+                      <>
+                        <TimelineNodeContent item={item} onView={() => setOpenItem(item)} />
+                        <div className="w-px h-4 bg-white/15" />
+                      </>
+                    )}
+                  </div>
+
+                  {/* Dot on the line */}
+                  <div
+                    className="row-start-2 self-center flex items-center justify-center"
+                    style={{ gridColumnStart: index + 1 }}
+                  >
+                    <div
+                      className={`h-4 w-4 rounded-full border-2 border-slate-900 ${dotColor} shadow-md z-10`}
+                      title={`${getEventMeta(item.event_type).label} · ${formatDateTime(item.created_at)}`}
+                    />
+                  </div>
+
+                  {/* Below-the-line slot */}
+                  <div
+                    className="row-start-3 flex flex-col items-center justify-start gap-2"
+                    style={{ gridColumnStart: index + 1 }}
+                  >
+                    {!isAbove && (
+                      <>
+                        <div className="w-px h-4 bg-white/15" />
+                        <TimelineNodeContent item={item} onView={() => setOpenItem(item)} />
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile: vertical card list fallback */}
+      <div className="relative md:hidden">
+        <div className="absolute left-[18px] top-2 bottom-0 w-px bg-white/8" />
+        <div className="space-y-4 pl-12">
+          {sorted.map((item) => {
+            const Icon = EVENT_ICONS[item.event_type] ?? GitBranch;
+            const colorClass =
+              EVENT_COLORS[item.event_type] ?? "border-white/10 bg-white/5 text-muted-foreground";
+            return (
+              <div key={item.id} className="relative">
+                <div
+                  className={`absolute -left-10 flex h-7 w-7 items-center justify-center rounded-full border ${colorClass}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <div className="rounded-lg border border-white/8 bg-white/4 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={item.event_type} />
+                      <span className="text-xs text-muted-foreground capitalize">
+                        via {item.source}
+                      </span>
+                    </div>
+                    <time className="text-xs text-muted-foreground">
+                      {formatDateTime(item.created_at)}
+                    </time>
+                  </div>
+                  <button
+                    onClick={() => setOpenItem(item)}
+                    className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    View Snapshot
+                  </button>
+                  {item.notes && (
+                    <p className="mt-2 text-xs text-muted-foreground">{item.notes}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <SnapshotModal item={openItem} onClose={() => setOpenItem(null)} />
+    </>
+  );
+}
 
 const MIME_BADGE_COLORS: Record<string, string> = {
   PDF:  "bg-red-500/15 text-red-400 border-red-500/25",
@@ -785,56 +1201,7 @@ export function StandardDetailPage() {
 
             {/* History tab */}
             <TabsContent value="history">
-              {history && history.items.length > 0 ? (
-                <div className="relative">
-                  {/* Timeline line */}
-                  <div className="absolute left-[18px] top-2 bottom-0 w-px bg-white/8" />
-                  <div className="space-y-4 pl-12">
-                    {history.items.map((item) => {
-                      const Icon = EVENT_ICONS[item.event_type] ?? GitBranch;
-                      const colorClass =
-                        EVENT_COLORS[item.event_type] ?? "border-white/10 bg-white/5 text-muted-foreground";
-                      return (
-                        <div key={item.id} className="relative">
-                          {/* Timeline dot */}
-                          <div
-                            className={`absolute -left-10 flex h-7 w-7 items-center justify-center rounded-full border ${colorClass}`}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="rounded-lg border border-white/8 bg-white/4 p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <StatusBadge status={item.event_type} />
-                                <span className="text-xs text-muted-foreground capitalize">
-                                  via {item.source}
-                                </span>
-                              </div>
-                              <time className="text-xs text-muted-foreground">
-                                {formatDateTime(item.created_at)}
-                              </time>
-                            </div>
-                            {item.new_value && (
-                              <JsonSnapshot value={item.new_value} />
-                            )}
-                            {item.notes && (
-                              <p className="mt-2 text-xs text-muted-foreground">{item.notes}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-                  <GitBranch className="h-10 w-10 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground">No change history yet</p>
-                  <p className="text-xs text-muted-foreground/60">
-                    History is recorded automatically when RSS feeds are polled.
-                  </p>
-                </div>
-              )}
+              <ChangeHistoryTimeline items={history?.items ?? []} />
             </TabsContent>
 
             {/* Documents tab */}

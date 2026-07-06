@@ -18,7 +18,13 @@ from fastapi import APIRouter, Query
 from app.api.deps import CurrentUser, DBSession
 from app.models.standard import StandardStatus
 from app.schemas.pagination import Page
-from app.schemas.standard import StandardDetail, StandardDetailWithAmendments, StandardHistoryItem, StandardListItem
+from app.schemas.standard import (
+    StandardDetail,
+    StandardDetailWithAmendments,
+    StandardGrouped,
+    StandardHistoryItem,
+    StandardListItem,
+)
 from app.services import standard_service
 
 router = APIRouter(prefix="/standards", tags=["Standards"])
@@ -26,8 +32,8 @@ router = APIRouter(prefix="/standards", tags=["Standards"])
 
 @router.get(
     "",
-    response_model=Page[StandardListItem],
-    summary="List standards — filterable, sortable, paginated (viewer+)",
+    response_model=Page[StandardListItem] | Page[StandardGrouped],
+    summary="List standards — filterable, sortable, paginated (viewer+), grouped by base reference by default",
 )
 async def list_standards(
     db: DBSession,
@@ -37,12 +43,41 @@ async def list_standards(
     search: str | None = Query(default=None, description="Search iso_reference, title, committee"),
     status: StandardStatus | None = Query(default=None),
     tc_committee: str | None = Query(default=None),
+    stage: str | None = Query(
+        default=None,
+        description="Exact stage_code (e.g. '60.60') or a phase prefix like '20.x'",
+    ),
     is_purchased: bool | None = Query(default=None),
     sort_by: Literal["iso_reference", "title", "updated_at", "status", "created_at", "published_date"] = Query(
         default="updated_at"
     ),
     sort_order: Literal["asc", "desc"] = Query(default="desc"),
-) -> Page[StandardListItem]:
+    grouped: bool = Query(
+        default=True,
+        description="Group pre-publication draft/stage variants by base reference. "
+        "Set false for the flat, ungrouped list (existing behaviour).",
+    ),
+) -> Page[StandardListItem] | Page[StandardGrouped]:
+    if grouped:
+        groups, total = await standard_service.get_grouped_standards(
+            db,
+            page=page,
+            page_size=page_size,
+            search=search,
+            status=status,
+            tc_committee=tc_committee,
+            stage=stage,
+            is_purchased=is_purchased,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+        return Page[StandardGrouped](
+            items=groups,
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
     standards, total = await standard_service.list_standards(
         db,
         page=page,
@@ -50,6 +85,7 @@ async def list_standards(
         search=search,
         status=status,
         tc_committee=tc_committee,
+        stage=stage,
         is_purchased=is_purchased,
         sort_by=sort_by,
         sort_order=sort_order,
@@ -60,6 +96,18 @@ async def list_standards(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get(
+    "/committees",
+    response_model=list[str],
+    summary="List distinct TC committees across all standards, for filter dropdowns (viewer+)",
+)
+async def list_committees(
+    db: DBSession,
+    _: CurrentUser,
+) -> list[str]:
+    return await standard_service.list_committees(db)
 
 
 @router.get(
@@ -127,8 +175,8 @@ async def purchase_standard(
     db: DBSession,
     current_user: ManagerOrAdminUser,
 ) -> StandardDetail:
-    """Mark standard as purchased. Triggers notifications and logs audit."""
-    standard = await standard_service.purchase_standard(
+    """Mark standard as purchased. Triggers notifications and logs audit. Idempotent — repeat calls are a no-op."""
+    standard, newly_purchased = await standard_service.purchase_standard(
         standard_id=standard_id,
         actor_id=current_user.id,
         purchase_notes=payload.purchase_notes,
@@ -137,13 +185,14 @@ async def purchase_standard(
 
     await db.commit()
 
-    # Trigger bulk notifications (in-app notifications for all users + email mapped lists)
-    from app.tasks.notifications import send_bulk_notification
-    send_bulk_notification.delay({
-        "event_type": "purchased",
-        "standard_id": str(standard.id),
-        "triggered_by_id": str(current_user.id),
-    })
+    if newly_purchased:
+        # Trigger bulk notifications (in-app notifications for all users + email mapped lists)
+        from app.tasks.notifications import send_bulk_notification
+        send_bulk_notification.delay({
+            "event_type": "purchased",
+            "standard_id": str(standard.id),
+            "triggered_by_id": str(current_user.id),
+        })
 
     return StandardDetail.model_validate(standard)
 

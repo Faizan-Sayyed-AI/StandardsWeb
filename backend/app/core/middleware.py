@@ -3,6 +3,7 @@ ASGI middleware stack.
 
 RequestIDMiddleware       — attaches a unique X-Request-ID to every request/response
 UnreadNotificationMiddleware — appends X-Unread-Notifications count to authenticated responses
+SecurityHeadersMiddleware — adds baseline hardening headers to every response
 """
 
 import uuid
@@ -14,9 +15,28 @@ from sqlalchemy import func, select
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as StarletteResponse
 
+from app.config import settings
 from app.core.security import decode_access_token
 
 log = structlog.get_logger(__name__)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Add baseline security response headers absent from a stock FastAPI app:
+    HSTS (HTTPS-only outside dev), X-Content-Type-Options (no MIME-sniffing —
+    relevant since the documents endpoint serves user-uploaded files), and
+    X-Frame-Options (no clickjacking via iframe embedding).
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> StarletteResponse:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if not settings.is_development:
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        return response
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):

@@ -1,7 +1,18 @@
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, EmailStr, Field
+
+from app.core.smtp_config import MASKED_PASSWORD_PLACEHOLDER
+
+# Mirrors the DB's event_type_enum (see migrations 0001, 0003) — kept as an
+# explicit Literal here (rather than reusing app.models.standard_history.EventType,
+# which is missing "document_uploaded") so an invalid event_type is rejected
+# with a clean 422 instead of reaching the DB as a raw enum-constraint 500.
+NotificationEventType = Literal[
+    "new", "updated", "amended", "withdrawn", "replaced",
+    "purchased", "status_change", "document_uploaded",
+]
 
 
 class SMTPConfigResponse(BaseModel):
@@ -16,7 +27,7 @@ class SMTPConfigResponse(BaseModel):
     def from_dict_masked(cls, data: dict) -> "SMTPConfigResponse":
         # Mask password for security
         pwd = data.get("SMTP_PASSWORD", "")
-        masked_pwd = "*" * 8 if pwd else ""
+        masked_pwd = MASKED_PASSWORD_PLACEHOLDER if pwd else ""
         return cls(
             SMTP_HOST=data.get("SMTP_HOST", ""),
             SMTP_PORT=data.get("SMTP_PORT", 1025),
@@ -48,7 +59,7 @@ class NotificationTriggerMappingResponse(BaseModel):
 
 
 class NotificationTriggerMappingCreate(BaseModel):
-    event_type: str = Field(..., min_length=1)
+    event_type: NotificationEventType
     list_id: uuid.UUID
     notify_all_users: bool = False
 
