@@ -305,10 +305,17 @@ async def _send_email_notification_async(
         # server being down — still reaches the audit log below instead of
         # propagating straight out of the task and skipping it entirely.
         try:
+            # aiosmtplib's `use_tls` means *implicit* TLS (connect and
+            # negotiate TLS immediately, e.g. port 465) — passing our
+            # SMTP_USE_TLS flag there breaks STARTTLS providers like Gmail's
+            # port 587 (immediate TLS ClientHello on a port expecting
+            # plaintext-then-upgrade → "[SSL: WRONG_VERSION_NUMBER]").
+            # SMTP_USE_TLS ("Use Secure TLS/STARTTLS", per the admin UI
+            # label) means STARTTLS, which is the `start_tls` parameter.
             client = aiosmtplib.SMTP(
                 hostname=smtp_settings["SMTP_HOST"],
                 port=smtp_settings["SMTP_PORT"],
-                use_tls=smtp_settings["SMTP_USE_TLS"]
+                start_tls=smtp_settings["SMTP_USE_TLS"],
             )
             await client.connect()
             if smtp_settings["SMTP_USER"] and smtp_settings["SMTP_PASSWORD"]:

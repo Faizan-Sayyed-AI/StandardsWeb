@@ -742,10 +742,13 @@ async def _notify_feed_failure_async(feed_id: str, error_msg: str) -> None:
 
         if recipients:
             smtp_settings = await get_active_smtp_settings(db)
+            # See the matching comment in tasks/notifications.py — SMTP_USE_TLS
+            # means STARTTLS (aiosmtplib's `start_tls`), not implicit TLS
+            # (`use_tls`), or Gmail's port 587 fails with a TLS version error.
             client = aiosmtplib.SMTP(
                 hostname=smtp_settings["SMTP_HOST"],
                 port=smtp_settings["SMTP_PORT"],
-                use_tls=smtp_settings["SMTP_USE_TLS"],
+                start_tls=smtp_settings["SMTP_USE_TLS"],
             )
             await client.connect()
             if smtp_settings["SMTP_USER"] and smtp_settings["SMTP_PASSWORD"]:
