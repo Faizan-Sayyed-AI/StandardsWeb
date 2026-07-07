@@ -14,6 +14,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.models.document import Document
+from app.models.document_tag import DocumentTag
 from app.models.standard import Standard, StandardStatus
 from app.models.standard_history import StandardHistory
 from app.schemas.standard import StandardGrouped, StandardListItem, StandardVersion
@@ -86,6 +88,11 @@ async def list_standards(
                 Standard.iso_reference.ilike(search_term),
                 Standard.title.ilike(search_term),
                 Standard.tc_committee.ilike(search_term),
+                Standard.id.in_(
+                    select(Document.standard_id)
+                    .join(DocumentTag, DocumentTag.document_id == Document.id)
+                    .where(DocumentTag.search_text.ilike(search_term))
+                ),
             )
         )
     if status is not None:
@@ -137,12 +144,15 @@ def _matches_filters(
     tc_committee: str | None,
     stage: str | None,
     is_purchased: bool | None,
+    tag_matched_ids: set[uuid.UUID] | None = None,
 ) -> bool:
     """Evaluate the same filter semantics as list_standards' SQL conditions, in Python."""
     if search:
         needle = search.strip().lower()
         haystacks = [standard.iso_reference, standard.title, standard.tc_committee]
-        if not any(needle in h.lower() for h in haystacks if h):
+        text_match = any(needle in h.lower() for h in haystacks if h)
+        tag_match = tag_matched_ids is not None and standard.id in tag_matched_ids
+        if not (text_match or tag_match):
             return False
     if status is not None and standard.status != status:
         return False
@@ -186,6 +196,17 @@ async def get_grouped_standards(
     )
     all_standards = list(result.scalars().all())
 
+    tag_matched_ids: set[uuid.UUID] | None = None
+    if search:
+        search_term = f"%{search.strip()}%"
+        tag_result = await db.execute(
+            select(Document.standard_id)
+            .join(DocumentTag, DocumentTag.document_id == Document.id)
+            .where(DocumentTag.search_text.ilike(search_term))
+            .distinct()
+        )
+        tag_matched_ids = {row[0] for row in tag_result.all()}
+
     # Group by base_reference. Rows with no base_reference (shouldn't happen
     # post-backfill) are each their own singleton group keyed by their own id.
     groups: dict[str, list[Standard]] = {}
@@ -209,6 +230,7 @@ async def get_grouped_standards(
             tc_committee=tc_committee,
             stage=stage,
             is_purchased=is_purchased,
+            tag_matched_ids=tag_matched_ids,
         ):
             continue
         versions = [m for m in members if m.id != primary.id]
