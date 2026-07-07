@@ -16,6 +16,10 @@ from app.core.smtp_config import (
     get_active_smtp_settings,
     set_active_smtp_settings,
 )
+from app.core.document_tagging_config import (
+    get_active_document_tagging_settings,
+    set_active_document_tagging_settings,
+)
 from app.models.distribution_list import DistributionList
 from app.models.notification_mapping import NotificationTriggerMapping
 from app.models.audit_log import AuditLog
@@ -25,6 +29,8 @@ from app.schemas.admin import (
     NotificationTriggerMappingResponse,
     SMTPConfigResponse,
     SMTPConfigUpdate,
+    DocumentTaggingConfigResponse,
+    DocumentTaggingConfigUpdate,
     AuditLogResponse,
     WorkerStatusResponse,
     QueueDepths,
@@ -93,6 +99,56 @@ async def update_smtp_config(
     # Return masked, reflecting what was actually persisted
     final_settings = await get_active_smtp_settings(db)
     return SMTPConfigResponse.from_dict_masked(final_settings)
+
+
+@router.get(
+    "/document-tagging-config",
+    response_model=DocumentTaggingConfigResponse,
+    summary="Get the active document AI tagging configuration with masked API key (admin)",
+)
+async def get_document_tagging_config(
+    db: DBSession,
+    current_user: AdminUser,
+) -> DocumentTaggingConfigResponse:
+    data = await get_active_document_tagging_settings(db)
+    return DocumentTaggingConfigResponse.from_dict_masked(data)
+
+
+@router.patch(
+    "/document-tagging-config",
+    response_model=DocumentTaggingConfigResponse,
+    summary="Update the document AI tagging configuration (admin)",
+)
+async def update_document_tagging_config(
+    payload: DocumentTaggingConfigUpdate,
+    db: DBSession,
+    current_user: AdminUser,
+) -> DocumentTaggingConfigResponse:
+    current_settings = await get_active_document_tagging_settings(db)
+    new_settings = payload.model_dump()
+
+    changed_keys = []
+    for k, v in new_settings.items():
+        if k == "DOCUMENT_TAGGING_API_KEY":
+            if v not in ("", MASKED_PASSWORD_PLACEHOLDER) and v != current_settings.get(k):
+                changed_keys.append(k)
+            continue
+        if current_settings.get(k) != v:
+            changed_keys.append(k)
+
+    await set_active_document_tagging_settings(db, new_settings)
+
+    await write_audit_log(
+        db,
+        action="system_config.document_tagging_updated",
+        resource_type="system_config",
+        actor_id=current_user.id,
+        resource_id=None,
+        payload={"updated_keys": changed_keys},
+    )
+
+    final_settings = await get_active_document_tagging_settings(db)
+    return DocumentTaggingConfigResponse.from_dict_masked(final_settings)
 
 
 @router.get(

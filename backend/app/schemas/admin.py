@@ -47,6 +47,25 @@ class SMTPConfigUpdate(BaseModel):
     SMTP_FROM_ADDRESS: str = Field(..., min_length=1)
 
 
+class DocumentTaggingConfigResponse(BaseModel):
+    DOCUMENT_TAGGING_URL: str
+    DOCUMENT_TAGGING_API_KEY: str
+
+    @classmethod
+    def from_dict_masked(cls, data: dict) -> "DocumentTaggingConfigResponse":
+        key = data.get("DOCUMENT_TAGGING_API_KEY", "")
+        masked_key = MASKED_PASSWORD_PLACEHOLDER if key else ""
+        return cls(
+            DOCUMENT_TAGGING_URL=data.get("DOCUMENT_TAGGING_URL", ""),
+            DOCUMENT_TAGGING_API_KEY=masked_key,
+        )
+
+
+class DocumentTaggingConfigUpdate(BaseModel):
+    DOCUMENT_TAGGING_URL: str = Field(..., min_length=1)
+    DOCUMENT_TAGGING_API_KEY: str = Field(default="")
+
+
 class NotificationTriggerMappingResponse(BaseModel):
     id: uuid.UUID
     event_type: str
