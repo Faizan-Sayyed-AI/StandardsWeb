@@ -15,6 +15,7 @@ export interface Document {
   uploaded_by: string;
   uploaded_at: string;
   is_current: boolean;
+  tags: DocumentTag | null;
 }
 
 export interface DocumentDownloadResponse {
@@ -22,6 +23,16 @@ export interface DocumentDownloadResponse {
   filename: string;
   download_url: string;
   expires_in_seconds: number | null;
+}
+
+export interface DocumentTag {
+  status: "pending" | "ok" | "failed";
+  document_type: string | null;
+  summary: string | null;
+  department: string | null;
+  raw_response: Record<string, unknown> | null;
+  error_message: string | null;
+  completed_at: string | null;
 }
 
 export interface UploadProgressCallback {
@@ -114,6 +125,12 @@ export async function downloadDocumentBlob(
 /** Soft-delete a document version (admin only). */
 export async function deleteDocument(documentId: string): Promise<void> {
   await api.delete(`/api/v1/documents/${documentId}`);
+}
+
+/** Reset a document's AI tagging to pending and re-dispatch it (manager+). */
+export async function retagDocument(documentId: string): Promise<Document> {
+  const { data } = await api.post<Document>(`/api/v1/documents/${documentId}/retag`);
+  return data;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
