@@ -35,6 +35,7 @@ from app.models.document import Document
 from app.models.notification import Notification, NotificationSeverity
 from app.models.standard import Standard
 from app.models.user import User
+from app.services import document_tag_service
 from app.services.audit_service import write_audit_log
 
 log = structlog.get_logger(__name__)
@@ -182,6 +183,10 @@ async def upload_document(
     db.add(doc)
     await db.flush()  # get doc.id before audit/notifications
 
+    # 7b. Create the pending document_tags row (AI tagging runs async — see
+    # tag_document task, dispatched below after commit)
+    await document_tag_service.create_pending_tag(doc.id, db)
+
     # 8. Audit log
     await write_audit_log(
         db,
@@ -216,6 +221,10 @@ async def upload_document(
         "document_id": str(doc.id),
         "triggered_by_id": str(actor_id),
     })
+
+    # 11. Dispatch AI tagging (async — see tag_document task)
+    from app.tasks.documents import tag_document
+    tag_document.delay(str(doc.id))
 
     log.info(
         "document.uploaded",
