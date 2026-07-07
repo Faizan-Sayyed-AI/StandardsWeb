@@ -4,13 +4,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, BookOpen, Calendar, Download, ExternalLink, FileText,
-  GitBranch, Loader2, Package, ScrollText, Tag, Trash2, Upload, X,
+  GitBranch, Loader2, Package, RefreshCw, ScrollText, Tag, Trash2, Upload, X,
 } from "lucide-react";
 import { getStandard, getStandardHistory, purchaseStandard, type HistoryItem, type Standard } from "@/api/standards";
 import {
   listDocuments,
   uploadDocument,
   deleteDocument,
+  retagDocument,
   downloadDocumentBlob,
   formatFileSize,
   mimeTypeLabel,
@@ -19,7 +20,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatDate, formatDateTime, formatTime, timeAgo } from "@/lib/utils";
@@ -730,6 +731,18 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
     },
   });
 
+  const [retaggingId, setRetaggingId] = useState<string | null>(null);
+  const retagMutation = useMutation({
+    mutationFn: (docId: string) => retagDocument(docId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents", standardId] });
+      setRetaggingId(null);
+    },
+    onError: () => {
+      setRetaggingId(null);
+    },
+  });
+
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleDownload = async (doc: IDocument) => {
@@ -846,6 +859,49 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
                       </>
                     )}
                   </div>
+                  {doc.tags && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {doc.tags.status === "pending" && (
+                        <span className="text-[10px] text-muted-foreground italic">Tagging pending…</span>
+                      )}
+                      {doc.tags.status === "failed" && (
+                        <>
+                          <span className="text-[10px] text-red-400">Tagging failed</span>
+                          {(isAdmin || isManager) && (
+                            <button
+                              onClick={() => {
+                                setRetaggingId(doc.id);
+                                retagMutation.mutate(doc.id);
+                              }}
+                              disabled={retagMutation.isPending && retaggingId === doc.id}
+                              className="inline-flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+                            >
+                              {retagMutation.isPending && retaggingId === doc.id ? (
+                                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-2.5 w-2.5" />
+                              )}
+                              Retry tagging
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {doc.tags.status === "ok" && (
+                        <>
+                          {doc.tags.department && (
+                            <Badge variant="secondary" className="text-[9px] py-0 px-1.5">
+                              {doc.tags.department}
+                            </Badge>
+                          )}
+                          {doc.tags.summary && (
+                            <p className="text-[10px] text-muted-foreground/80 italic truncate max-w-full basis-full">
+                              {doc.tags.summary}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
