@@ -73,5 +73,7 @@ celery.conf.update(
     task_default_queue="feeds",
 )
 
-# Auto-discover tasks in app/tasks/*.py
+# NOTE: autodiscover_tasks alone does not reliably register every task
+# module with this worker in practice — see app/tasks/__init__.py, which
+# is the actual source of truth: every task module must be imported there.
 celery.autodiscover_tasks(["app.tasks"])
