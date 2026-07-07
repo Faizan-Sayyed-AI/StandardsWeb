@@ -68,7 +68,7 @@ services:
     container_name: ists_worker
     command: >
       celery -A app.celery_app worker
-      -Q feeds,notifications,maintenance
+      -Q feeds,notifications,maintenance,documents
       --loglevel=info
       --pool=solo
     env_file: .env

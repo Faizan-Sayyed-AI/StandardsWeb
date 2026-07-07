@@ -8,6 +8,7 @@ Queues:
   feeds         — RSS polling tasks
   notifications — Email + in-app notification tasks
   maintenance   — Cleanup and health-check tasks
+  documents     — AI document-tagging tasks
 
 Beat scheduler: celery_sqlalchemy_scheduler.DatabaseScheduler
   Reads schedules from the celery_schedules table (our custom table) and
@@ -65,6 +66,7 @@ celery.conf.update(
         "app.tasks.feeds.*": {"queue": "feeds"},
         "app.tasks.notifications.*": {"queue": "notifications"},
         "app.tasks.maintenance.*": {"queue": "maintenance"},
+        "app.tasks.documents.*": {"queue": "documents"},
     },
 
     # Default queue for unrouted tasks
