@@ -13,6 +13,7 @@ import { FeedsPage } from "@/pages/FeedsPage";
 import { SchedulePage } from "@/pages/SchedulePage";
 import { DistributionListsPage } from "@/pages/DistributionListsPage";
 import { SMTPConfigPage } from "@/pages/SMTPConfigPage";
+import { DocumentTaggingConfigPage } from "@/pages/DocumentTaggingConfigPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { AuditLogsPage } from "@/pages/AuditLogsPage";
 
@@ -57,6 +58,7 @@ export default function App() {
                   <Route path="/schedule" element={<SchedulePage />} />
                   <Route path="/admin/distribution-lists" element={<DistributionListsPage />} />
                   <Route path="/admin/smtp-config" element={<SMTPConfigPage />} />
+                  <Route path="/admin/document-tagging" element={<DocumentTaggingConfigPage />} />
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
                 </Route>

@@ -10,6 +10,7 @@ import {
   Rss,
   Settings,
   Shield,
+  Tag,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { label: "Schedule", href: "/schedule", icon: Calendar, adminOnly: true },
   { label: "Distribution Lists", href: "/admin/distribution-lists", icon: Mail, adminOnly: true },
   { label: "SMTP Settings", href: "/admin/smtp-config", icon: Settings, adminOnly: true },
+  { label: "Document Tagging", href: "/admin/document-tagging", icon: Tag, adminOnly: true },
   { label: "Users", href: "/users", icon: Users, adminOnly: true },
   { label: "Audit Logs", href: "/admin/audit-logs", icon: Layers, adminOnly: true },
 ];

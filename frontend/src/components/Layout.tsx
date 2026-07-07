@@ -51,6 +51,7 @@ const routeLabels: Record<string, string> = {
   "/users": "User Management",
   "/admin/distribution-lists": "Distribution Lists",
   "/admin/smtp-config": "SMTP Settings",
+  "/admin/document-tagging": "Document Tagging",
   "/admin/audit-logs": "Audit Logs",
 };
 
