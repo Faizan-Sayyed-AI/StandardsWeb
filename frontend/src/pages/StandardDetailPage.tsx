@@ -708,6 +708,32 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
 
 // ── Documents Tab ──────────────────────────────────────────────────────────────
 
+const TAG_CATEGORY_KEYS = [
+  "category_01_metadata",
+  "category_02_primary_subject",
+  "category_03_technical_methods",
+  "category_04_nlp_ai_models",
+  "category_05_application_domain",
+  "category_06_system_architecture",
+  "category_07_statistical_mathematical",
+  "category_08_semantic_conceptual",
+  "category_09_long_tail_phrases",
+] as const;
+
+function flattenTagCategories(rawResponse: Record<string, unknown> | null): string[] {
+  if (!rawResponse) return [];
+  const tags: string[] = [];
+  for (const key of TAG_CATEGORY_KEYS) {
+    const values = rawResponse[key];
+    if (Array.isArray(values)) {
+      for (const v of values) {
+        if (typeof v === "string" && v) tags.push(v);
+      }
+    }
+  }
+  return tags;
+}
+
 interface DocumentsTabProps {
   standardId: string;
 }
@@ -893,6 +919,11 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
                               {doc.tags.department}
                             </Badge>
                           )}
+                          {flattenTagCategories(doc.tags.raw_response).map((tag, i) => (
+                            <Badge key={i} variant="secondary" className="text-[9px] py-0 px-1.5">
+                              {tag}
+                            </Badge>
+                          ))}
                           {doc.tags.summary && (
                             <p className="text-[10px] text-muted-foreground/80 italic truncate max-w-full basis-full">
                               {doc.tags.summary}

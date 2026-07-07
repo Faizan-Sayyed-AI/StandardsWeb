@@ -51,7 +51,6 @@ async def _tag_document_async(document_id: str) -> dict:
     from app.models.document import Document
     from app.models.document_tag import DocumentTagStatus
     from app.services import document_tag_service
-    from sqlalchemy import select
 
     doc_uuid = uuid.UUID(document_id)
 
