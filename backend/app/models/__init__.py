@@ -4,6 +4,7 @@ from app.models.audit_log import AuditLog
 from app.models.celery_schedule import CelerySchedule
 from app.models.distribution_list import DistributionList, DistributionListMember
 from app.models.document import Document
+from app.models.document_tag import DocumentTag
 from app.models.notification import Notification
 from app.models.notification_mapping import NotificationTriggerMapping
 from app.models.password_reset_token import PasswordResetToken
@@ -20,6 +21,7 @@ __all__ = [
     "DistributionList",
     "DistributionListMember",
     "Document",
+    "DocumentTag",
     "Notification",
     "NotificationTriggerMapping",
     "PasswordResetToken",
