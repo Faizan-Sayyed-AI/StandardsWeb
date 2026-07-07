@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 # ── Application ───────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="ISO Standards Tracking System (ISTS)",
+    title="StandardSphere",
     description=(
         "Automated discovery, monitoring, and management of ISO technical committee standards. "
         "Provides RSS feed polling, standards lifecycle tracking, document versioning, "

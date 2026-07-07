@@ -1,7 +1,7 @@
-# ISTS — Automation Overview
+# StandardSphere — Automation Overview
 
-This document inventories every automated / background process in the ISO Standards
-Tracking System: what runs on its own, what triggers it, and where the code lives.
+This document inventories every automated / background process in StandardSphere:
+what runs on its own, what triggers it, and where the code lives.
 It complements `ARCHITECTURE.drawio` (static system topology) by focusing on
 **behavior over time** — schedules, task queues, retries, and notification fan-out.
 
@@ -169,13 +169,13 @@ Extras → Edit Diagram.
 
 ```xml
 <mxfile host="app.diagrams.net" version="21.0.0">
-  <diagram id="ists-automation-flow" name="ISTS Automation Flow">
+  <diagram id="ists-automation-flow" name="StandardSphere Automation Flow">
     <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1650" pageHeight="1150" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <mxCell id="title" value="ISTS — Automation Flow: Scheduling → Polling → Diffing → Notifying"
+        <mxCell id="title" value="StandardSphere — Automation Flow: Scheduling → Polling → Diffing → Notifying"
           style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontStyle=1;"
           vertex="1" parent="1">
           <mxGeometry x="380" y="10" width="900" height="40" as="geometry" />

@@ -89,8 +89,8 @@ def render_html_template(event_title: str, event_desc: str, recipient_name: str,
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 32px; text-align: center;">
-                            <h1 style="color: #ffffff; font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.025em;">ISTS</h1>
-                            <p style="color: #ccfbf1; font-size: 14px; margin: 8px 0 0 0; font-weight: 500;">ISO Standards Tracking System</p>
+                            <h1 style="color: #ffffff; font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.025em;">StandardSphere</h1>
+                            <p style="color: #ccfbf1; font-size: 14px; margin: 8px 0 0 0; font-weight: 500;">Standards Tracking System</p>
                         </td>
                     </tr>
                     
@@ -144,7 +144,7 @@ def render_html_template(event_title: str, event_desc: str, recipient_name: str,
                     <!-- Footer -->
                     <tr>
                         <td style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #f1f5f9;">
-                            <p style="font-size: 12px; color: #94a3b8; margin: 0 0 8px 0;">This is an automated notification from the ISTS tracking system.</p>
+                            <p style="font-size: 12px; color: #94a3b8; margin: 0 0 8px 0;">This is an automated notification from the StandardSphere tracking system.</p>
                             <p style="font-size: 12px; color: #94a3b8; margin: 0;">You received this because your email is mapped to these lifecycle events.</p>
                         </td>
                     </tr>
@@ -178,7 +178,7 @@ TC Committee: {standard.tc_committee or "—"}
 View standard in dashboard: {standard_url}
 
 --
-This is an automated notification from the ISTS tracking system.
+This is an automated notification from the StandardSphere tracking system.
 You received this because your email is mapped to these lifecycle events.
 """
     return text
@@ -293,7 +293,7 @@ async def _send_email_notification_async(
         event_title, event_desc = get_notification_content(event_type, standard)
 
         # Build email templates
-        subject = f"[ISTS] {event_title}"
+        subject = f"[StandardSphere] {event_title}"
 
         success_count = 0
         failure_count = 0

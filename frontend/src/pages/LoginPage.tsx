@@ -46,8 +46,8 @@ export function LoginPage() {
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="font-bold text-white">ISTS</p>
-            <p className="text-xs text-muted-foreground">ISO Standards Tracking System</p>
+            <p className="font-bold text-white">StandardSphere</p>
+            <p className="text-xs text-muted-foreground">Standards Tracking System</p>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export function LoginPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-teal-500">
               <Shield className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-white">ISTS</span>
+            <span className="font-bold text-white">StandardSphere</span>
           </div>
 
           <div className="space-y-2">
@@ -177,7 +177,7 @@ export function LoginPage() {
           </form>
 
           <p className="text-center text-xs text-muted-foreground">
-            ISO Standards Tracking System v1.0
+            StandardSphere v1.0
             <br />
             Internal use only — authorized personnel only
           </p>

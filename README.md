@@ -1,4 +1,4 @@
-# ISO Standards Tracking System (ISTS)
+# StandardSphere
 
 Automated discovery, monitoring, and management of ISO technical committee standards.
 

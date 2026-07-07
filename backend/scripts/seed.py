@@ -61,7 +61,7 @@ async def seed() -> None:
         log.info("seed_complete", user_id=str(admin.id), email=admin.email)
 
     print("\n" + "=" * 50)
-    print("  ISTS — Default admin user created")
+    print("  StandardSphere — Default admin user created")
     print("=" * 50)
     print(f"  Email:    {_SEED_EMAIL}")
     print(f"  Password: {_SEED_PASSWORD}")

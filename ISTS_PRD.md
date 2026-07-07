@@ -1,4 +1,4 @@
-# ISO Standards Tracking System (ISTS)
+# StandardSphere
 ## Product Requirements Document
 
 | Field | Value |
@@ -36,7 +36,7 @@
 
 ## 1. Executive Summary
 
-The ISO Standards Tracking System (ISTS) is a centralised web application that automates the discovery, monitoring, and management of ISO technical committee standards. It replaces manual RSS monitoring with scheduled background workers, provides a single source of truth for purchased and tracked standards, and delivers timely notifications to relevant stakeholders whenever a standard's status changes.
+StandardSphere is a centralised web application that automates the discovery, monitoring, and management of ISO technical committee standards. It replaces manual RSS monitoring with scheduled background workers, provides a single source of truth for purchased and tracked standards, and delivers timely notifications to relevant stakeholders whenever a standard's status changes.
 
 ### 1.1 Problem Statement
 
@@ -60,7 +60,7 @@ The ISO Standards Tracking System (ISTS) is a centralised web application that a
 
 ### 2.1 Scope
 
-ISTS covers the following domains: RSS feed management, automated standards tracking, document storage and versioning, user and role management, notification delivery, and administrative configuration.
+StandardSphere covers the following domains: RSS feed management, automated standards tracking, document storage and versioning, user and role management, notification delivery, and administrative configuration.
 
 **Out of scope for v1:** direct ISO API integration, e-commerce / purchasing workflow, mobile native apps, multi-tenancy, and ASTM standards tracking (planned for v2).
 
@@ -172,7 +172,7 @@ ISTS covers the following domains: RSS feed management, automated standards trac
 
 ### 5.1 Architecture Overview
 
-ISTS uses a layered architecture with clear separation between the presentation layer (React SPA), API layer (FastAPI), task execution layer (Celery), and data layer (PostgreSQL + file storage). Redis acts as both the Celery message broker and a caching layer.
+StandardSphere uses a layered architecture with clear separation between the presentation layer (React SPA), API layer (FastAPI), task execution layer (Celery), and data layer (PostgreSQL + file storage). Redis acts as both the Celery message broker and a caching layer.
 
 ### 5.2 Component Diagram
 
@@ -527,7 +527,7 @@ beat_max_loop_interval = 300       # 5 min schedule refresh
 ### 10.2 Email Template Structure
 
 - Transactional HTML email with inline CSS (compatible with common mail clients).
-- Subject prefix: `[ISTS]` to enable recipient filtering.
+- Subject prefix: `[StandardSphere]` to enable recipient filtering.
 - Sections: event summary, affected standard details, action link (view in dashboard), footer with unsubscribe notice.
 - Plain-text fallback included in all `multipart/alternative` messages.
 

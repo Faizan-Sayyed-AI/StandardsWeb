@@ -1,5 +1,5 @@
 # ============================================================
-# ISTS Backend — Multi-stage Docker Image
+# StandardSphere Backend — Multi-stage Docker Image
 # Stage 1 (builder): install deps with uv into a venv
 # Stage 2 (runtime): lean image with venv + app source
 # Supports CMD override for worker/beat (no separate image needed)

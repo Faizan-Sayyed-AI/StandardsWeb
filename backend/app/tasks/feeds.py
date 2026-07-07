@@ -756,10 +756,10 @@ async def _notify_feed_failure_async(feed_id: str, error_msg: str) -> None:
             try:
                 for email, name in recipients.items():
                     msg = MIMEMultipart("alternative")
-                    msg["Subject"] = f"[ISTS] CRITICAL: {title}"
+                    msg["Subject"] = f"[StandardSphere] CRITICAL: {title}"
                     msg["From"] = smtp_settings["SMTP_FROM_ADDRESS"]
                     msg["To"] = email
-                    msg.attach(MIMEText(f"Hello {name},\n\n{body}\n\n--\nISTS", "plain"))
+                    msg.attach(MIMEText(f"Hello {name},\n\n{body}\n\n--\nStandardSphere", "plain"))
                     msg.attach(MIMEText(
                         f"<html><body><h2 style='color:#ef4444'>{title}</h2>"
                         f"<p>{body}</p></body></html>",
