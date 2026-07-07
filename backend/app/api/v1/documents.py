@@ -18,9 +18,11 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 from app.api.deps import AdminUser, CurrentUser, DBSession, ManagerOrAdminUser
 from app.config import settings
-from app.schemas.document import DocumentDownloadResponse, DocumentResponse
+from app.core.exceptions import NotFoundError
+from app.models.document import Document
+from app.schemas.document import DocumentDownloadResponse, DocumentResponse, DocumentTagResponse
 from app.schemas.pagination import Page
-from app.services import document_service
+from app.services import document_tag_service, document_service
 
 router = APIRouter(tags=["Documents"])
 
@@ -60,8 +62,16 @@ async def list_documents(
     offset = (page - 1) * page_size
     paged = docs[offset : offset + page_size]
 
+    tag_map = await document_tag_service.get_tags_for_documents([d.id for d in paged], db)
+    items = []
+    for d in paged:
+        resp = DocumentResponse.model_validate(d)
+        tag = tag_map.get(d.id)
+        resp.tags = DocumentTagResponse.model_validate(tag) if tag else None
+        items.append(resp)
+
     return Page[DocumentResponse](
-        items=[DocumentResponse.model_validate(d) for d in paged],
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -112,7 +122,44 @@ async def upload_document(
         db=db,
         ip_address=_client_ip(request),
     )
-    return DocumentResponse.model_validate(doc)
+    resp = DocumentResponse.model_validate(doc)
+    tag = await document_tag_service.get_tag_for_document(doc.id, db)
+    resp.tags = DocumentTagResponse.model_validate(tag) if tag else None
+    return resp
+
+
+@router.post(
+    "/documents/{document_id}/retag",
+    response_model=DocumentResponse,
+    summary="Re-run AI tagging for a document (manager+)",
+)
+async def retag_document(
+    document_id: uuid.UUID,
+    db: DBSession,
+    current_user: ManagerOrAdminUser,
+) -> DocumentResponse:
+    """
+    Reset a document's tag status to pending and re-dispatch tagging.
+
+    Available regardless of current tag status (not just failed ones).
+    Returns 404 if the document doesn't exist, or if it has never been
+    tagged (documents uploaded before this feature shipped have no tag row —
+    re-uploading is the only way to get one, since there's nothing to reset).
+    """
+    from app.tasks.documents import tag_document
+
+    doc = await db.get(Document, document_id)
+    if doc is None:
+        raise NotFoundError("Document")
+
+    tag = await document_tag_service.reset_tag_to_pending(document_id, db)
+    await db.commit()
+
+    tag_document.delay(str(document_id))
+
+    resp = DocumentResponse.model_validate(doc)
+    resp.tags = DocumentTagResponse.model_validate(tag)
+    return resp
 
 
 # ── Standalone /documents/{document_id}/* ────────────────────────────────────

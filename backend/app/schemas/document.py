@@ -10,8 +10,23 @@ Endpoints:
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
+
+
+class DocumentTagResponse(BaseModel):
+    """AI-generated tag data for one document version."""
+
+    status: str  # "pending" | "ok" | "failed"
+    document_type: str | None
+    summary: str | None
+    department: str | None
+    raw_response: dict[str, Any] | None
+    error_message: str | None
+    completed_at: datetime | None
+
+    model_config = {"from_attributes": True}
 
 
 class DocumentResponse(BaseModel):
@@ -28,6 +43,7 @@ class DocumentResponse(BaseModel):
     uploaded_by: uuid.UUID
     uploaded_at: datetime
     is_current: bool
+    tags: DocumentTagResponse | None = None
 
     model_config = {"from_attributes": True}
 
