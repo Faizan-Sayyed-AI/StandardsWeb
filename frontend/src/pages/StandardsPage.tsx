@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, ChevronDown, ChevronRight, ChevronUp, Loader2, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import {
-  createStandard, listCommittees, listStandards, type StandardCreatePayload,
-  type StandardGrouped, type StandardsListParams,
+  createStandard, listCommittees, listStandards, listStandardsBodies,
+  type StandardCreatePayload, type StandardGrouped, type StandardsListParams,
 } from "@/api/standards";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,7 @@ export function StandardsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [committeeFilter, setCommitteeFilter] = useState("");
   const [stageFilter, setStageFilter] = useState("");
+  const [standardsBodyFilter, setStandardsBodyFilter] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const { isAdmin, isManager } = useAuth();
@@ -108,6 +109,7 @@ export function StandardsPage() {
     ...params,
     search: search.trim() || undefined,
     tc_committee: committeeFilter || undefined,
+    standards_body: standardsBodyFilter || undefined,
     stage: stageFilter || undefined,
   };
 
@@ -122,6 +124,13 @@ export function StandardsPage() {
   const { data: committees = [] } = useQuery({
     queryKey: ["standards", "committees"],
     queryFn: listCommittees,
+  });
+
+  // Independent of the current page/filters, same reasoning as the
+  // committees dropdown above.
+  const { data: standardsBodies = [] } = useQuery({
+    queryKey: ["standards", "standards-bodies"],
+    queryFn: listStandardsBodies,
   });
 
   const updateSort = (sortBy: string) => {
@@ -248,6 +257,27 @@ export function StandardsPage() {
                     <option value="">All Committees</option>
                     {committees.map((c) => (
                       <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                </div>
+              </div>
+
+              {/* Standards Body dropdown */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Body</p>
+                <div className="relative">
+                  <select
+                    value={standardsBodyFilter}
+                    onChange={(e) => {
+                      setStandardsBodyFilter(e.target.value);
+                      setParams((p) => ({ ...p, page: 1 }));
+                    }}
+                    className="appearance-none min-w-[140px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">All Bodies</option>
+                    {standardsBodies.map((b) => (
+                      <option key={b} value={b}>{b}</option>
                     ))}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -435,11 +465,18 @@ export function StandardsPage() {
                     </TableCell>
                     <TableCell className="max-w-xs">
                       <p className="truncate text-foreground">{std.title}</p>
-                      {std.is_purchased && (
-                        <span className="inline-flex mt-0.5 items-center bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">
-                          ✓ Purchased
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {std.standards_body && (
+                          <Badge variant="secondary" className="text-[9px] py-0 px-1.5">
+                            {std.standards_body}
+                          </Badge>
+                        )}
+                        {std.is_purchased && (
+                          <span className="inline-flex items-center bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">
+                            ✓ Purchased
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="text-xs text-muted-foreground">
