@@ -13,6 +13,7 @@ export interface Standard {
   title: string;
   edition: string | null;
   tc_committee: string | null;
+  standards_body: string | null;
   status: string;
   stage_code: string | null;
   stage_name: string | null;
@@ -66,6 +67,7 @@ export interface StandardsListParams {
   search?: string;
   status?: string;
   tc_committee?: string;
+  standards_body?: string;
   stage?: string;
   is_purchased?: boolean;
   sort_by?: string;
@@ -80,6 +82,27 @@ export async function listStandards(params: StandardsListParams = {}): Promise<P
 
 export async function listCommittees(): Promise<string[]> {
   const { data } = await api.get<string[]>("/api/v1/standards/committees");
+  return data;
+}
+
+export interface StandardCreatePayload {
+  iso_reference: string;
+  title: string;
+  standards_body: string;
+  edition?: string;
+  tc_committee?: string;
+  status?: string;
+  published_date?: string;
+  external_url?: string;
+}
+
+export async function listStandardsBodies(): Promise<string[]> {
+  const { data } = await api.get<string[]>("/api/v1/standards/standards-bodies");
+  return data;
+}
+
+export async function createStandard(payload: StandardCreatePayload): Promise<StandardDetail> {
+  const { data } = await api.post<StandardDetail>("/api/v1/standards", payload);
   return data;
 }
 
