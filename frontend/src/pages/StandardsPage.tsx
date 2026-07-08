@@ -1,16 +1,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { BookOpen, ChevronDown, ChevronRight, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
-import { listCommittees, listStandards, type StandardGrouped, type StandardsListParams } from "@/api/standards";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, ChevronDown, ChevronRight, ChevronUp, Loader2, Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  createStandard, listCommittees, listStandards, type StandardCreatePayload,
+  type StandardGrouped, type StandardsListParams,
+} from "@/api/standards";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatDate } from "@/lib/utils";
 
 const STATUS_OPTIONS = ["", "active", "withdrawn", "under_review", "replaced", "amended", "revised"];
@@ -35,6 +44,19 @@ const SORT_OPTIONS = [
   { value: "status", label: "Status" },
 ];
 
+const STANDARDS_BODY_OPTIONS = ["ISO", "IEC", "IEEE", "ASTM", "Other"];
+
+const DEFAULT_CREATE_FORM: StandardCreatePayload = {
+  iso_reference: "",
+  title: "",
+  standards_body: "ISO",
+  edition: "",
+  tc_committee: "",
+  status: "active",
+  published_date: "",
+  external_url: "",
+};
+
 export function StandardsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useState<StandardsListParams>({
@@ -48,6 +70,30 @@ export function StandardsPage() {
   const [committeeFilter, setCommitteeFilter] = useState("");
   const [stageFilter, setStageFilter] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const { isAdmin, isManager } = useAuth();
+  const qc = useQueryClient();
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState<StandardCreatePayload>(DEFAULT_CREATE_FORM);
+  const [otherBody, setOtherBody] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: createStandard,
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["standards", "list"] });
+      setShowCreate(false);
+      setCreateForm(DEFAULT_CREATE_FORM);
+      setOtherBody("");
+      setCreateError(null);
+      navigate(`/standards/${created.id}`);
+    },
+    onError: (err: { response?: { data?: { detail?: string } } }) => {
+      setCreateError(err?.response?.data?.detail ?? "Failed to create standard");
+    },
+  });
+
+  const canCreate = isAdmin || isManager;
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
@@ -119,6 +165,12 @@ export function StandardsPage() {
             {data ? `${data.total.toLocaleString()} standards` : "Loading…"}
           </p>
         </div>
+        {canCreate && (
+          <Button onClick={() => setShowCreate(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Standard
+          </Button>
+        )}
       </div>
 
       {/* Search + filters bar */}
@@ -488,6 +540,147 @@ export function StandardsPage() {
           </div>
         )}
       </Card>
+
+      {/* Add Standard Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-indigo-400" />
+              Add Standard
+            </DialogTitle>
+            <DialogDescription>
+              Manually add a standard from a body with no RSS feed (e.g. ASTM).
+            </DialogDescription>
+          </DialogHeader>
+
+          {createError && (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+              {createError}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="std-reference">Reference Number</Label>
+              <Input
+                id="std-reference"
+                placeholder="ASTM D638-14"
+                value={createForm.iso_reference}
+                onChange={(e) => setCreateForm((f) => ({ ...f, iso_reference: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="std-title">Title</Label>
+              <Input
+                id="std-title"
+                placeholder="Standard Test Method for Tensile Properties of Plastics"
+                value={createForm.title}
+                onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="std-body">Standards Body</Label>
+                <select
+                  id="std-body"
+                  value={createForm.standards_body}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, standards_body: e.target.value }))}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                >
+                  {STANDARDS_BODY_OPTIONS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="std-edition">Edition (optional)</Label>
+                <Input
+                  id="std-edition"
+                  placeholder="2014"
+                  value={createForm.edition ?? ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, edition: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {createForm.standards_body === "Other" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="std-body-other">Body name</Label>
+                <Input
+                  id="std-body-other"
+                  placeholder="e.g. BSI, DIN"
+                  value={otherBody}
+                  onChange={(e) => setOtherBody(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="std-committee">Committee / Working Group (optional)</Label>
+                <Input
+                  id="std-committee"
+                  placeholder="D20"
+                  value={createForm.tc_committee ?? ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, tc_committee: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="std-published">Published date (optional)</Label>
+                <Input
+                  id="std-published"
+                  type="date"
+                  value={createForm.published_date ?? ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, published_date: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="std-url">External URL (optional)</Label>
+              <Input
+                id="std-url"
+                placeholder="https://www.astm.org/d0638-14.html"
+                value={createForm.external_url ?? ""}
+                onChange={(e) => setCreateForm((f) => ({ ...f, external_url: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setShowCreate(false); setCreateError(null); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const body = createForm.standards_body === "Other" ? otherBody : createForm.standards_body;
+                createMutation.mutate({
+                  ...createForm,
+                  standards_body: body,
+                  edition: createForm.edition || undefined,
+                  tc_committee: createForm.tc_committee || undefined,
+                  published_date: createForm.published_date || undefined,
+                  external_url: createForm.external_url || undefined,
+                });
+              }}
+              disabled={
+                createMutation.isPending ||
+                !createForm.iso_reference ||
+                !createForm.title ||
+                (createForm.standards_body === "Other" && !otherBody)
+              }
+              className="gap-2"
+            >
+              {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Add Standard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
