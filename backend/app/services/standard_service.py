@@ -56,6 +56,7 @@ async def list_standards(
     search: str | None = None,
     status: StandardStatus | None = None,
     tc_committee: str | None = None,
+    standards_body: str | None = None,
     stage: str | None = None,
     is_purchased: bool | None = None,
     sort_by: str = "updated_at",
@@ -68,6 +69,7 @@ async def list_standards(
         search:       Free-text search across iso_reference and title.
         status:       Filter by StandardStatus enum value.
         tc_committee: Exact match on tc_committee field.
+        standards_body: Exact match on standards_body field.
         stage:        Exact stage_code match, or a ".x" phase prefix (e.g. "20.x").
         is_purchased: Filter by purchase flag.
         sort_by:      Column name — one of: iso_reference, title, updated_at, status.
@@ -99,6 +101,8 @@ async def list_standards(
         conditions.append(Standard.status == status)
     if tc_committee is not None:
         conditions.append(Standard.tc_committee == tc_committee)
+    if standards_body is not None:
+        conditions.append(Standard.standards_body == standards_body)
     if stage:
         conditions.append(_stage_matches_sql(stage))
     if is_purchased is not None:
@@ -142,6 +146,7 @@ def _matches_filters(
     search: str | None,
     status: StandardStatus | None,
     tc_committee: str | None,
+    standards_body: str | None,
     stage: str | None,
     is_purchased: bool | None,
     tag_matched_ids: set[uuid.UUID] | None = None,
@@ -158,6 +163,8 @@ def _matches_filters(
         return False
     if tc_committee is not None and standard.tc_committee != tc_committee:
         return False
+    if standards_body is not None and standard.standards_body != standards_body:
+        return False
     if not _stage_matches(standard.stage_code, stage):
         return False
     if is_purchased is not None and standard.is_purchased != is_purchased:
@@ -173,6 +180,7 @@ async def get_grouped_standards(
     search: str | None = None,
     status: StandardStatus | None = None,
     tc_committee: str | None = None,
+    standards_body: str | None = None,
     stage: str | None = None,
     is_purchased: bool | None = None,
     sort_by: str = "updated_at",
@@ -228,6 +236,7 @@ async def get_grouped_standards(
             search=search,
             status=status,
             tc_committee=tc_committee,
+            standards_body=standards_body,
             stage=stage,
             is_purchased=is_purchased,
             tag_matched_ids=tag_matched_ids,
@@ -272,6 +281,17 @@ async def list_committees(db: AsyncSession) -> list[str]:
         .where(Standard.tc_committee.is_not(None))
         .distinct()
         .order_by(Standard.tc_committee.asc())
+    )
+    return [row[0] for row in result.all()]
+
+
+async def list_standards_bodies(db: AsyncSession) -> list[str]:
+    """Return the distinct set of standards_body values across all standards, for filter dropdowns."""
+    result = await db.execute(
+        select(Standard.standards_body)
+        .where(Standard.standards_body.is_not(None))
+        .distinct()
+        .order_by(Standard.standards_body.asc())
     )
     return [row[0] for row in result.all()]
 

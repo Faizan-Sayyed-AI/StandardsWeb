@@ -44,6 +44,7 @@ async def list_standards(
     search: str | None = Query(default=None, description="Search iso_reference, title, committee"),
     status: StandardStatus | None = Query(default=None),
     tc_committee: str | None = Query(default=None),
+    standards_body: str | None = Query(default=None),
     stage: str | None = Query(
         default=None,
         description="Exact stage_code (e.g. '60.60') or a phase prefix like '20.x'",
@@ -67,6 +68,7 @@ async def list_standards(
             search=search,
             status=status,
             tc_committee=tc_committee,
+            standards_body=standards_body,
             stage=stage,
             is_purchased=is_purchased,
             sort_by=sort_by,
@@ -86,6 +88,7 @@ async def list_standards(
         search=search,
         status=status,
         tc_committee=tc_committee,
+        standards_body=standards_body,
         stage=stage,
         is_purchased=is_purchased,
         sort_by=sort_by,
@@ -137,6 +140,18 @@ async def list_committees(
     _: CurrentUser,
 ) -> list[str]:
     return await standard_service.list_committees(db)
+
+
+@router.get(
+    "/standards-bodies",
+    response_model=list[str],
+    summary="List distinct standards bodies across all standards, for filter dropdowns (viewer+)",
+)
+async def list_standards_bodies(
+    db: DBSession,
+    _: CurrentUser,
+) -> list[str]:
+    return await standard_service.list_standards_bodies(db)
 
 
 @router.get(
