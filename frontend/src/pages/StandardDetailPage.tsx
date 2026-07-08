@@ -1098,7 +1098,7 @@ export function StandardDetailPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600/20 border border-indigo-500/20 text-xs font-bold text-indigo-300">
-                  ISO
+                  {standard.standards_body ?? "ISO"}
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-foreground tracking-tight">
@@ -1144,7 +1144,7 @@ export function StandardDetailPage() {
               >
                 <Button variant="outline" size="sm" className="gap-2">
                   <ExternalLink className="h-3.5 w-3.5" />
-                  View on ISO.org
+                  {standard.standards_body ? `View on ${standard.standards_body}` : "View source"}
                 </Button>
               </a>
             )}

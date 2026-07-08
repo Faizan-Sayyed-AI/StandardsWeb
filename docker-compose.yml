@@ -1,5 +1,5 @@
 # ============================================================
-# ISTS — Local Development Docker Compose
+# StandardSphere — Local Development Docker Compose
 # All 6 services: db, redis, web, worker, beat, frontend
 # ============================================================
 

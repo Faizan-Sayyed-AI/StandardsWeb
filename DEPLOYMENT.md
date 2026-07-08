@@ -1,6 +1,6 @@
-# ISTS — EC2 Deployment Guide
+# StandardSphere — EC2 Deployment Guide
 
-**ISO Standards Tracking System (ISTS)**  
+**StandardSphere**  
 Target: AWS EC2 (Amazon Linux 2023 or Ubuntu 22.04 LTS)  
 Deployment model: Docker Compose on a single EC2 instance
 
@@ -777,4 +777,4 @@ Before going live, verify each item:
 
 ---
 
-*Generated for ISTS v1.0.0 — ISO Standards Tracking System*
+*Generated for StandardSphere v1.0.0*

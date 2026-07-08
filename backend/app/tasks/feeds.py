@@ -329,6 +329,7 @@ def parse_iso_entry(entry: Any) -> dict | None:
         "stage_name": stage_name,
         "status": status,
         "tc_committee": tc_committee,
+        "standards_body": org_part.split("/")[0].strip(),
         "published_date": published_date,
         "external_url": link or None,
         "event_type_hint": event_type_hint,
@@ -397,6 +398,7 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
             title=parsed["title"],
             edition=parsed["edition"],
             tc_committee=tc_committee,
+            standards_body=parsed["standards_body"],
             status=new_status,
             source_feed_id=feed.id,
             external_url=parsed["external_url"],
@@ -477,6 +479,7 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
     standard.edition = parsed["edition"] or standard.edition
     standard.status = new_status
     standard.tc_committee = tc_committee
+    standard.standards_body = parsed["standards_body"]
     standard.content_hash = content_hash
     standard.stage_code = parsed["stage"]
     standard.stage_name = parsed["stage_name"]
@@ -756,10 +759,10 @@ async def _notify_feed_failure_async(feed_id: str, error_msg: str) -> None:
             try:
                 for email, name in recipients.items():
                     msg = MIMEMultipart("alternative")
-                    msg["Subject"] = f"[ISTS] CRITICAL: {title}"
+                    msg["Subject"] = f"[StandardSphere] CRITICAL: {title}"
                     msg["From"] = smtp_settings["SMTP_FROM_ADDRESS"]
                     msg["To"] = email
-                    msg.attach(MIMEText(f"Hello {name},\n\n{body}\n\n--\nISTS", "plain"))
+                    msg.attach(MIMEText(f"Hello {name},\n\n{body}\n\n--\nStandardSphere", "plain"))
                     msg.attach(MIMEText(
                         f"<html><body><h2 style='color:#ef4444'>{title}</h2>"
                         f"<p>{body}</p></body></html>",

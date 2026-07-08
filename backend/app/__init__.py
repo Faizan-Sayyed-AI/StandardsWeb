@@ -1,1 +1,1 @@
-"""ISTS Backend Application Package."""
+"""StandardSphere Backend Application Package."""

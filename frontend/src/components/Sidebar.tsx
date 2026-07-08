@@ -75,7 +75,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground tracking-tight">ISTS</p>
+              <p className="text-sm font-bold text-foreground tracking-tight">StandardSphere</p>
               <p className="text-[10px] text-muted-foreground">Standards Tracker</p>
             </div>
           )}

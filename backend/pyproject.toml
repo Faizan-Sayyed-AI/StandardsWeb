@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ists-backend"
 version = "1.0.0"
-description = "ISO Standards Tracking System — FastAPI Backend"
+description = "StandardSphere — FastAPI Backend"
 requires-python = ">=3.12"
 dependencies = [
     # API framework

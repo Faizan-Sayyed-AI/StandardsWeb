@@ -58,7 +58,7 @@ const routeLabels: Record<string, string> = {
 function getBreadcrumb(pathname: string): string {
   if (routeLabels[pathname]) return routeLabels[pathname];
   const base = "/" + pathname.split("/")[1];
-  return routeLabels[base] ?? "ISTS";
+  return routeLabels[base] ?? "StandardSphere";
 }
 
 export function Layout() {
@@ -92,7 +92,7 @@ export function Layout() {
           <div>
             <h1 className="text-sm font-semibold text-foreground">{pageTitle}</h1>
             <p className="text-xs text-muted-foreground">
-              ISO Standards Tracking System
+              StandardSphere
             </p>
           </div>
 

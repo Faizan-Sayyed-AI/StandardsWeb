@@ -13,12 +13,12 @@ import structlog
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.models.document import Document
 from app.models.document_tag import DocumentTag
 from app.models.standard import Standard, StandardStatus
 from app.models.standard_history import StandardHistory
-from app.schemas.standard import StandardGrouped, StandardListItem, StandardVersion
+from app.schemas.standard import StandardCreate, StandardGrouped, StandardListItem, StandardVersion
 
 log = structlog.get_logger(__name__)
 
@@ -56,6 +56,7 @@ async def list_standards(
     search: str | None = None,
     status: StandardStatus | None = None,
     tc_committee: str | None = None,
+    standards_body: str | None = None,
     stage: str | None = None,
     is_purchased: bool | None = None,
     sort_by: str = "updated_at",
@@ -68,6 +69,7 @@ async def list_standards(
         search:       Free-text search across iso_reference and title.
         status:       Filter by StandardStatus enum value.
         tc_committee: Exact match on tc_committee field.
+        standards_body: Exact match on standards_body field.
         stage:        Exact stage_code match, or a ".x" phase prefix (e.g. "20.x").
         is_purchased: Filter by purchase flag.
         sort_by:      Column name — one of: iso_reference, title, updated_at, status.
@@ -99,6 +101,8 @@ async def list_standards(
         conditions.append(Standard.status == status)
     if tc_committee is not None:
         conditions.append(Standard.tc_committee == tc_committee)
+    if standards_body is not None:
+        conditions.append(Standard.standards_body == standards_body)
     if stage:
         conditions.append(_stage_matches_sql(stage))
     if is_purchased is not None:
@@ -142,6 +146,7 @@ def _matches_filters(
     search: str | None,
     status: StandardStatus | None,
     tc_committee: str | None,
+    standards_body: str | None,
     stage: str | None,
     is_purchased: bool | None,
     tag_matched_ids: set[uuid.UUID] | None = None,
@@ -158,6 +163,8 @@ def _matches_filters(
         return False
     if tc_committee is not None and standard.tc_committee != tc_committee:
         return False
+    if standards_body is not None and standard.standards_body != standards_body:
+        return False
     if not _stage_matches(standard.stage_code, stage):
         return False
     if is_purchased is not None and standard.is_purchased != is_purchased:
@@ -173,6 +180,7 @@ async def get_grouped_standards(
     search: str | None = None,
     status: StandardStatus | None = None,
     tc_committee: str | None = None,
+    standards_body: str | None = None,
     stage: str | None = None,
     is_purchased: bool | None = None,
     sort_by: str = "updated_at",
@@ -228,6 +236,7 @@ async def get_grouped_standards(
             search=search,
             status=status,
             tc_committee=tc_committee,
+            standards_body=standards_body,
             stage=stage,
             is_purchased=is_purchased,
             tag_matched_ids=tag_matched_ids,
@@ -272,6 +281,17 @@ async def list_committees(db: AsyncSession) -> list[str]:
         .where(Standard.tc_committee.is_not(None))
         .distinct()
         .order_by(Standard.tc_committee.asc())
+    )
+    return [row[0] for row in result.all()]
+
+
+async def list_standards_bodies(db: AsyncSession) -> list[str]:
+    """Return the distinct set of standards_body values across all standards, for filter dropdowns."""
+    result = await db.execute(
+        select(Standard.standards_body)
+        .where(Standard.standards_body.is_not(None))
+        .distinct()
+        .order_by(Standard.standards_body.asc())
     )
     return [row[0] for row in result.all()]
 
@@ -403,4 +423,77 @@ async def purchase_standard(
 
     log.info("standard_purchased", standard_id=str(standard_id), actor_id=str(actor_id))
     return standard, True
+
+
+async def create_standard_manually(
+    payload: StandardCreate,
+    actor_id: uuid.UUID,
+    db: AsyncSession,
+) -> Standard:
+    """
+    Create a standard by hand (admin/manager data entry), not via RSS discovery.
+
+    Used for standards bodies (ASTM, etc.) that don't publish an RSS feed.
+    Raises ConflictError if a standard with this iso_reference already exists.
+    """
+    # Local imports, matching purchase_standard()'s existing style in this same
+    # file (avoids a module-level circular import between standard_service and
+    # standard_history/audit_service/the feeds task module).
+    from app.models.standard_history import EventSource, EventType, StandardHistory
+    from app.services.audit_service import write_audit_log
+    from app.tasks.feeds import _extract_base_reference
+
+    existing = await db.execute(
+        select(Standard).where(Standard.iso_reference == payload.iso_reference)
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise ConflictError(
+            f"A standard with reference '{payload.iso_reference}' already exists."
+        )
+
+    standard = Standard(
+        iso_reference=payload.iso_reference,
+        title=payload.title,
+        standards_body=payload.standards_body,
+        edition=payload.edition,
+        tc_committee=payload.tc_committee,
+        status=payload.status,
+        published_date=payload.published_date,
+        external_url=payload.external_url,
+        base_reference=_extract_base_reference(payload.iso_reference),
+        # source_feed_id and content_hash stay NULL — this standard has no feed origin
+    )
+    db.add(standard)
+    await db.flush()
+
+    history = StandardHistory(
+        standard_id=standard.id,
+        event_type=EventType.new,
+        old_value=None,
+        new_value={
+            "iso_reference": standard.iso_reference,
+            "title": standard.title,
+            "standards_body": standard.standards_body,
+            "edition": standard.edition,
+            "tc_committee": standard.tc_committee,
+            "status": standard.status.value,
+            "published_date": str(standard.published_date) if standard.published_date else None,
+        },
+        source=EventSource.manual,
+        triggered_by=actor_id,
+        notes="Standard added manually",
+    )
+    db.add(history)
+
+    await write_audit_log(
+        db,
+        action="standard.created",
+        resource_type="standard",
+        actor_id=actor_id,
+        resource_id=standard.id,
+        payload={"iso_reference": standard.iso_reference, "standards_body": standard.standards_body},
+    )
+
+    log.info("standard_created_manually", standard_id=str(standard.id), actor_id=str(actor_id))
+    return standard
 
