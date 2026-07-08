@@ -13,12 +13,12 @@ import structlog
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.models.document import Document
 from app.models.document_tag import DocumentTag
 from app.models.standard import Standard, StandardStatus
 from app.models.standard_history import StandardHistory
-from app.schemas.standard import StandardGrouped, StandardListItem, StandardVersion
+from app.schemas.standard import StandardCreate, StandardGrouped, StandardListItem, StandardVersion
 
 log = structlog.get_logger(__name__)
 
@@ -403,4 +403,77 @@ async def purchase_standard(
 
     log.info("standard_purchased", standard_id=str(standard_id), actor_id=str(actor_id))
     return standard, True
+
+
+async def create_standard_manually(
+    payload: StandardCreate,
+    actor_id: uuid.UUID,
+    db: AsyncSession,
+) -> Standard:
+    """
+    Create a standard by hand (admin/manager data entry), not via RSS discovery.
+
+    Used for standards bodies (ASTM, etc.) that don't publish an RSS feed.
+    Raises ConflictError if a standard with this iso_reference already exists.
+    """
+    # Local imports, matching purchase_standard()'s existing style in this same
+    # file (avoids a module-level circular import between standard_service and
+    # standard_history/audit_service/the feeds task module).
+    from app.models.standard_history import EventSource, EventType, StandardHistory
+    from app.services.audit_service import write_audit_log
+    from app.tasks.feeds import _extract_base_reference
+
+    existing = await db.execute(
+        select(Standard).where(Standard.iso_reference == payload.iso_reference)
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise ConflictError(
+            f"A standard with reference '{payload.iso_reference}' already exists."
+        )
+
+    standard = Standard(
+        iso_reference=payload.iso_reference,
+        title=payload.title,
+        standards_body=payload.standards_body,
+        edition=payload.edition,
+        tc_committee=payload.tc_committee,
+        status=payload.status,
+        published_date=payload.published_date,
+        external_url=payload.external_url,
+        base_reference=_extract_base_reference(payload.iso_reference),
+        # source_feed_id and content_hash stay NULL — this standard has no feed origin
+    )
+    db.add(standard)
+    await db.flush()
+
+    history = StandardHistory(
+        standard_id=standard.id,
+        event_type=EventType.new,
+        old_value=None,
+        new_value={
+            "iso_reference": standard.iso_reference,
+            "title": standard.title,
+            "standards_body": standard.standards_body,
+            "edition": standard.edition,
+            "tc_committee": standard.tc_committee,
+            "status": standard.status.value,
+            "published_date": str(standard.published_date) if standard.published_date else None,
+        },
+        source=EventSource.manual,
+        triggered_by=actor_id,
+        notes="Standard added manually",
+    )
+    db.add(history)
+
+    await write_audit_log(
+        db,
+        action="standard.created",
+        resource_type="standard",
+        actor_id=actor_id,
+        resource_id=standard.id,
+        payload={"iso_reference": standard.iso_reference, "standards_body": standard.standards_body},
+    )
+
+    log.info("standard_created_manually", standard_id=str(standard.id), actor_id=str(actor_id))
+    return standard
 

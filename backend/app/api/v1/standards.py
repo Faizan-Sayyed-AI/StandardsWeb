@@ -13,12 +13,13 @@ Endpoints:
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, status
 
-from app.api.deps import CurrentUser, DBSession
+from app.api.deps import CurrentUser, DBSession, ManagerOrAdminUser
 from app.models.standard import StandardStatus
 from app.schemas.pagination import Page
 from app.schemas.standard import (
+    StandardCreate,
     StandardDetail,
     StandardDetailWithAmendments,
     StandardGrouped,
@@ -98,6 +99,34 @@ async def list_standards(
     )
 
 
+@router.post(
+    "",
+    response_model=StandardDetail,
+    status_code=status.HTTP_201_CREATED,
+    summary="Manually add a standard (manager+)",
+)
+async def create_standard(
+    payload: StandardCreate,
+    db: DBSession,
+    current_user: ManagerOrAdminUser,
+) -> StandardDetail:
+    """
+    Add a standard by hand — for standards bodies (ASTM, etc.) with no RSS feed.
+    Returns 409 if a standard with this reference already exists.
+    """
+    standard = await standard_service.create_standard_manually(payload, current_user.id, db)
+    await db.commit()
+
+    from app.tasks.notifications import send_bulk_notification
+    send_bulk_notification.delay({
+        "event_type": "new",
+        "standard_id": str(standard.id),
+        "triggered_by_id": str(current_user.id),
+    })
+
+    return StandardDetail.model_validate(standard)
+
+
 @router.get(
     "/committees",
     response_model=list[str],
@@ -161,8 +190,6 @@ from pydantic import BaseModel
 class StandardPurchaseRequest(BaseModel):
     purchase_notes: str | None = None
 
-
-from app.api.deps import ManagerOrAdminUser
 
 @router.post(
     "/{standard_id}/purchase",

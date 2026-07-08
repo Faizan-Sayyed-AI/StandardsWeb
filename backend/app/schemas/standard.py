@@ -9,10 +9,23 @@ GET /standards/{id}/history → Page[StandardHistoryItem]
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.standard import StandardStatus
 from app.models.standard_history import EventSource, EventType
+
+
+class StandardCreate(BaseModel):
+    """Payload for manually adding a standard (manager+), not via RSS discovery."""
+
+    iso_reference: str = Field(..., min_length=1, max_length=100)
+    title: str = Field(..., min_length=1)
+    standards_body: str = Field(..., min_length=1, max_length=50)
+    edition: str | None = Field(default=None, max_length=50)
+    tc_committee: str | None = Field(default=None, max_length=100)
+    status: StandardStatus = StandardStatus.active
+    published_date: date | None = None
+    external_url: str | None = None
 
 
 class StandardListItem(BaseModel):
@@ -23,6 +36,7 @@ class StandardListItem(BaseModel):
     title: str
     edition: str | None
     tc_committee: str | None
+    standards_body: str | None = None
     status: StandardStatus
     is_purchased: bool
     stage_code: str | None = None
@@ -42,6 +56,7 @@ class StandardDetail(BaseModel):
     title: str
     edition: str | None
     tc_committee: str | None
+    standards_body: str | None = None
     status: StandardStatus
     is_purchased: bool
     purchased_at: datetime | None
