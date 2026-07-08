@@ -33,7 +33,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex" id="login_page_form">
       {/* Left panel — branding */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-950 p-12 border-r border-white/8 relative overflow-hidden">
         {/* Background orbs */}
@@ -54,13 +54,14 @@ export function LoginPage() {
         {/* Hero text */}
         <div className="relative space-y-6">
           <h2 className="text-4xl font-bold text-white leading-tight">
-            Track ISO standards
+            Never miss a standard
             <br />
-            <span className="gradient-text">automatically.</span>
+            <span className="gradient-text">update again.</span>
           </h2>
           <p className="text-muted-foreground text-lg leading-relaxed max-w-sm">
-            Monitor RSS feeds, detect standard lifecycle changes, and stay ahead of compliance
-            requirements — all in one place.
+            We watch every standard you rely on and alert you the moment one is revised,
+            withdrawn, or replaced so your research and compliance work stays current,
+            automatically.
           </p>
 
           {/* Feature pills */}
@@ -101,7 +102,7 @@ export function LoginPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-teal-500">
               <Shield className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-white">StandardSphere</span>
+            <span className="font-bold text-foreground">StandardSphere</span>
           </div>
 
           <div className="space-y-2">

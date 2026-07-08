@@ -169,7 +169,7 @@ export function DistributionListsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10 gap-2">
+      <div className="flex border-b border-border gap-2">
         <button
           onClick={() => setActiveTab("lists")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-[2px] ${
@@ -328,7 +328,7 @@ export function DistributionListsPage() {
                 <Card className="max-h-[350px] overflow-y-auto">
                   <CardContent className="p-0">
                     <Table>
-                      <TableHeader className="sticky top-0 bg-slate-900 z-10">
+                      <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                           <TableHead className="py-2 text-xs">Recipient</TableHead>
                           <TableHead className="py-2 text-right w-16"></TableHead>
@@ -442,7 +442,7 @@ export function DistributionListsPage() {
                       </TableCell>
                       <TableCell className="text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          mapping.notify_all_users ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30" : "bg-white/5 text-muted-foreground"
+                          mapping.notify_all_users ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30" : "bg-foreground/5 text-muted-foreground"
                         }`}>
                           {mapping.notify_all_users ? "Yes" : "No"}
                         </span>
@@ -542,7 +542,7 @@ export function DistributionListsPage() {
                 id="map-event"
                 value={mappingEvent}
                 onChange={(e) => setMappingEvent(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {EVENT_TYPES.map((e) => (
                   <option key={e.value} value={e.value}>{e.label}</option>
@@ -556,7 +556,7 @@ export function DistributionListsPage() {
                 id="map-list"
                 value={mappingListId}
                 onChange={(e) => setMappingListId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {lists?.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
@@ -570,7 +570,7 @@ export function DistributionListsPage() {
                 id="map-notify-all"
                 checked={mappingNotifyAll}
                 onChange={(e) => setMappingNotifyAll(e.target.checked)}
-                className="h-4 w-4 rounded border-white/10 bg-slate-950 text-teal-600 focus:ring-teal-500 focus:ring-offset-slate-900"
+                className="h-4 w-4 rounded border-input bg-background text-teal-600 focus:ring-teal-500 focus:ring-offset-background"
               />
               <Label htmlFor="map-notify-all" className="text-sm cursor-pointer select-none">
                 Also broadcast in-app notification to all users

@@ -99,7 +99,7 @@ export function AuditLogsPage() {
                 placeholder="Username, email or UUID"
                 value={actor}
                 onChange={(e) => { setActor(e.target.value); setPage(1); }}
-                className="pl-8 text-xs h-9 bg-slate-950/40 border-white/10"
+                className="pl-8 text-xs h-9 bg-foreground/5 border-border"
               />
             </div>
           </div>
@@ -111,7 +111,7 @@ export function AuditLogsPage() {
               placeholder="e.g. user.created"
               value={action}
               onChange={(e) => { setAction(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-slate-950/40 border-white/10"
+              className="text-xs h-9 bg-foreground/5 border-border"
             />
           </div>
 
@@ -122,7 +122,7 @@ export function AuditLogsPage() {
               placeholder="e.g. user, standard"
               value={resourceType}
               onChange={(e) => { setResourceType(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-slate-950/40 border-white/10"
+              className="text-xs h-9 bg-foreground/5 border-border"
             />
           </div>
 
@@ -133,7 +133,7 @@ export function AuditLogsPage() {
               type="date"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-slate-950/40 border-white/10 text-muted-foreground"
+              className="text-xs h-9 bg-foreground/5 border-border text-muted-foreground"
             />
           </div>
 
@@ -144,7 +144,7 @@ export function AuditLogsPage() {
               type="date"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-slate-950/40 border-white/10 text-muted-foreground"
+              className="text-xs h-9 bg-foreground/5 border-border text-muted-foreground"
             />
           </div>
         </div>
@@ -183,7 +183,7 @@ export function AuditLogsPage() {
                     <>
                       <TableRow
                         key={log.id}
-                        className="cursor-pointer hover:bg-white/4 transition-colors"
+                        className="cursor-pointer hover:bg-foreground/4 transition-colors"
                         onClick={() => toggleRow(log.id)}
                       >
                         <TableCell className="text-center">
@@ -228,14 +228,14 @@ export function AuditLogsPage() {
                       </TableRow>
                       
                       {expandedRow === log.id && (
-                        <TableRow className="bg-slate-900/40 hover:bg-slate-900/40">
+                        <TableRow className="bg-foreground/4 hover:bg-foreground/4">
                           <TableCell colSpan={6} className="px-12 py-4">
                             <div className="space-y-2">
                               <div className="flex justify-between text-[10px] text-muted-foreground/80 uppercase font-semibold tracking-wider">
                                 <span>Audit Metadata Context Payload</span>
                                 {log.resource_id && <span>Resource ID: {log.resource_id}</span>}
                               </div>
-                              <pre className="text-[11px] font-mono bg-slate-950/70 border border-white/5 p-3.5 rounded-lg overflow-x-auto text-slate-300 leading-relaxed max-w-full">
+                              <pre className="text-[11px] font-mono bg-foreground/5 border border-border p-3.5 rounded-lg overflow-x-auto text-foreground leading-relaxed max-w-full">
                                 {JSON.stringify(log.payload, null, 2)}
                               </pre>
                             </div>
@@ -250,7 +250,7 @@ export function AuditLogsPage() {
 
         {/* Pagination */}
         {data && totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-white/8 px-6 py-3">
+          <div className="flex items-center justify-between border-t border-border px-6 py-3">
             <p className="text-xs text-muted-foreground">
               Page {page} of {totalPages}
             </p>

@@ -64,7 +64,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={`flex w-full max-w-sm items-start gap-3 rounded-xl border p-4 shadow-2xl transition-all duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out ${
               variant === "destructive"
                 ? "bg-red-950/95 border-red-500/30 text-red-200"
-                : "bg-slate-900/95 border-white/10 text-slate-100"
+                : "bg-popover/95 border-border text-popover-foreground"
             }`}
           >
             <div className="flex-1 space-y-1">
@@ -74,7 +74,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               </ToastPrimitive.Description>
             </div>
             
-            <ToastPrimitive.Close className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
+            <ToastPrimitive.Close className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors">
               <X className="h-4 w-4" />
             </ToastPrimitive.Close>
           </ToastPrimitive.Root>

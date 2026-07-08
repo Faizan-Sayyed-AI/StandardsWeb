@@ -66,7 +66,12 @@ html.light {
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 600;
     letter-spacing: -0.025em;
   }
@@ -84,13 +89,16 @@ html.light {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: hsl(var(--background));
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
@@ -110,15 +118,33 @@ html.light {
 
 /* Sidebar animation */
 @keyframes slideIn {
-  from { transform: translateX(-100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Pulse animation for notification badge */
 @keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 0.4; }
-  100% { transform: scale(0.8); opacity: 0.8; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
 }
 
 .pulse-ring {
@@ -127,8 +153,15 @@ html.light {
 
 /* Fade in animation for page content */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in-up {
@@ -140,4 +173,16 @@ html.light {
   background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
     linear-gradient(135deg, hsl(var(--primary) / 0.4), hsl(var(--accent) / 0.2)) border-box;
   border: 1px solid transparent;
+}
+
+#login_page_form {
+  overflow-x: hidden;
+}
+
+aside#leftWrapper {
+  width: 15%;
+}
+
+div#rightWrapper {
+  width: 85%;
 }

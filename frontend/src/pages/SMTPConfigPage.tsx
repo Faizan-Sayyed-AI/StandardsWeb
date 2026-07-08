@@ -96,10 +96,10 @@ export function SMTPConfigPage() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4 py-4">
-              <div className="h-4 bg-white/5 rounded w-1/4 animate-pulse"></div>
-              <div className="h-10 bg-white/5 rounded animate-pulse"></div>
-              <div className="h-4 bg-white/5 rounded w-1/3 animate-pulse"></div>
-              <div className="h-10 bg-white/5 rounded animate-pulse"></div>
+              <div className="h-4 bg-foreground/5 rounded w-1/4 animate-pulse"></div>
+              <div className="h-10 bg-foreground/5 rounded animate-pulse"></div>
+              <div className="h-4 bg-foreground/5 rounded w-1/3 animate-pulse"></div>
+              <div className="h-10 bg-foreground/5 rounded animate-pulse"></div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -168,13 +168,13 @@ export function SMTPConfigPage() {
                 />
               </div>
 
-              <div className="flex items-center space-x-2 pt-2 border-t border-white/5 mt-4">
+              <div className="flex items-center space-x-2 pt-2 border-t border-border mt-4">
                 <input
                   type="checkbox"
                   id="smtp-tls"
                   checked={useTls}
                   onChange={(e) => setUseTls(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/10 bg-slate-950 text-teal-600 focus:ring-teal-500 focus:ring-offset-slate-900"
+                  className="h-4 w-4 rounded border-input bg-background text-teal-600 focus:ring-teal-500 focus:ring-offset-background"
                 />
                 <Label htmlFor="smtp-tls" className="text-sm cursor-pointer select-none">
                   Use Secure TLS/STARTTLS Connection

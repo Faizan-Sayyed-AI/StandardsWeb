@@ -96,9 +96,8 @@ interface SnapshotRowProps {
 function SnapshotRow({ label, value, changed }: SnapshotRowProps) {
   return (
     <div
-      className={`flex items-baseline justify-between gap-3 rounded px-2 py-1.5 text-xs ${
-        changed ? "bg-amber-500/10" : ""
-      }`}
+      className={`flex items-baseline justify-between gap-3 rounded px-2 py-1.5 text-xs ${changed ? "bg-amber-500/10" : ""
+        }`}
     >
       <span className="text-muted-foreground shrink-0">{label}</span>
       <span className="text-foreground text-right min-w-0">{value}</span>
@@ -247,11 +246,11 @@ function SnapshotModal({
       onClick={onClose}
     >
       <div
-        className="relative mx-auto mt-20 w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-900 shadow-2xl transition-all duration-200"
+        className="relative mx-auto mt-20 w-full max-w-2xl rounded-xl border border-border bg-card shadow-2xl transition-all duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-white/8 p-5">
+        <div className="flex items-center justify-between gap-3 border-b border-border p-5">
           <div className="flex items-center gap-3">
             <span
               className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.badgeClass}`}
@@ -263,18 +262,17 @@ function SnapshotModal({
               {formatDateTime(item.created_at)}
             </span>
             <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                isRss
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${isRss
                   ? "border-slate-500/30 bg-slate-500/10 text-slate-300"
                   : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
-              }`}
+                }`}
             >
               Via {isRss ? "RSS" : "Manual"}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/8 hover:text-foreground transition-colors"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/8 hover:text-foreground transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -316,7 +314,7 @@ function SnapshotModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end border-t border-white/8 p-4">
+        <div className="flex justify-end border-t border-border p-4">
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
@@ -342,11 +340,10 @@ function TimelineNodeContent({ item, onView }: TimelineNodeContentProps) {
       <div className="flex flex-wrap items-center justify-center gap-1.5">
         <EventBadge item={item} />
         <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-            isRss
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${isRss
               ? "border-slate-500/30 bg-slate-500/10 text-slate-300"
               : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
-          }`}
+            }`}
         >
           Via {isRss ? "RSS" : "Manual"}
         </span>
@@ -394,7 +391,7 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
           >
             {/* Full-width line running through the middle */}
             <div
-              className="col-start-1 row-start-2 self-center h-px bg-white/10"
+              className="col-start-1 row-start-2 self-center h-px bg-border"
               style={{ gridColumnEnd: `span ${sorted.length}` }}
             />
 
@@ -412,7 +409,7 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
                     {isAbove && (
                       <>
                         <TimelineNodeContent item={item} onView={() => setOpenItem(item)} />
-                        <div className="w-px h-4 bg-white/15" />
+                        <div className="w-px h-4 bg-border" />
                       </>
                     )}
                   </div>
@@ -423,7 +420,7 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
                     style={{ gridColumnStart: index + 1 }}
                   >
                     <div
-                      className={`h-4 w-4 rounded-full border-2 border-slate-900 ${dotColor} shadow-md z-10`}
+                      className={`h-4 w-4 rounded-full border-2 border-background ${dotColor} shadow-md z-10`}
                       title={`${getEventMeta(item.event_type).label} · ${formatDateTime(item.created_at)}`}
                     />
                   </div>
@@ -435,7 +432,7 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
                   >
                     {!isAbove && (
                       <>
-                        <div className="w-px h-4 bg-white/15" />
+                        <div className="w-px h-4 bg-border" />
                         <TimelineNodeContent item={item} onView={() => setOpenItem(item)} />
                       </>
                     )}
@@ -449,12 +446,12 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
 
       {/* Mobile: vertical card list fallback */}
       <div className="relative md:hidden">
-        <div className="absolute left-[18px] top-2 bottom-0 w-px bg-white/8" />
+        <div className="absolute left-[18px] top-2 bottom-0 w-px bg-border" />
         <div className="space-y-4 pl-12">
           {sorted.map((item) => {
             const Icon = EVENT_ICONS[item.event_type] ?? GitBranch;
             const colorClass =
-              EVENT_COLORS[item.event_type] ?? "border-white/10 bg-white/5 text-muted-foreground";
+              EVENT_COLORS[item.event_type] ?? "border-border bg-foreground/5 text-muted-foreground";
             return (
               <div key={item.id} className="relative">
                 <div
@@ -462,7 +459,7 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </div>
-                <div className="rounded-lg border border-white/8 bg-white/4 p-4">
+                <div className="rounded-lg border border-border bg-foreground/4 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={item.event_type} />
@@ -496,11 +493,11 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
 }
 
 const MIME_BADGE_COLORS: Record<string, string> = {
-  PDF:  "bg-red-500/15 text-red-400 border-red-500/25",
+  PDF: "bg-red-500/15 text-red-400 border-red-500/25",
   DOCX: "bg-blue-500/15 text-blue-400 border-blue-500/25",
   XLSX: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-  DOC:  "bg-blue-500/15 text-blue-400 border-blue-500/25",
-  XLS:  "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
+  DOC: "bg-blue-500/15 text-blue-400 border-blue-500/25",
+  XLS: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
 };
 
 const ACCEPTED_TYPES =
@@ -562,9 +559,9 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget && !isUploading) onClose(); }}
     >
-      <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-[#0f1117] shadow-2xl">
+      <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-border bg-card shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/8">
+        <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/20 border border-indigo-500/20">
               <Upload className="h-4 w-4 text-indigo-400" />
@@ -577,7 +574,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
           <button
             onClick={onClose}
             disabled={isUploading}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/8 hover:text-foreground transition-colors disabled:opacity-40"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/8 hover:text-foreground transition-colors disabled:opacity-40"
           >
             <X className="h-4 w-4" />
           </button>
@@ -593,7 +590,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
             className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-colors
               ${selectedFile
                 ? "border-indigo-500/50 bg-indigo-500/5"
-                : "border-white/15 bg-white/3 hover:border-white/25 hover:bg-white/5"
+                : "border-border bg-foreground/3 hover:border-foreground/25 hover:bg-foreground/5"
               }
               ${isUploading ? "pointer-events-none opacity-60" : ""}
             `}
@@ -621,7 +618,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
               </>
             ) : (
               <>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 border border-white/10">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-foreground/5 border border-border">
                   <Upload className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground text-center">
@@ -644,7 +641,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
               disabled={isUploading}
               rows={2}
               placeholder="What changed in this version?"
-              className="w-full rounded-lg border border-white/10 bg-white/4 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg border border-border bg-foreground/4 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 disabled:opacity-50 transition-colors"
             />
           </div>
 
@@ -655,7 +652,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
                 <span>Uploading…</span>
                 <span>{progress}%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+              <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-teal-500 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
@@ -673,7 +670,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-white/8">
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-border">
           <Button
             variant="ghost"
             size="sm"
@@ -813,7 +810,7 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
       {/* Document list */}
       {docs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-foreground/5 border border-border">
             <FileText className="h-7 w-7 text-muted-foreground/40" />
           </div>
           <p className="text-sm font-medium text-muted-foreground">No documents uploaded yet</p>
@@ -831,11 +828,11 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
           {docs.map((doc) => {
             const typeLabel = mimeTypeLabel(doc.mime_type);
             const badgeClass =
-              MIME_BADGE_COLORS[typeLabel] ?? "bg-white/10 text-muted-foreground border-white/15";
+              MIME_BADGE_COLORS[typeLabel] ?? "bg-foreground/10 text-muted-foreground border-border";
             const isCurrent = doc.is_current;
 
             return (
@@ -843,12 +840,12 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
                 key={doc.id}
                 className={`flex items-center gap-4 rounded-xl border p-4 transition-colors
                   ${isCurrent
-                    ? "border-white/10 bg-white/4 hover:bg-white/6"
-                    : "border-white/5 bg-white/2 opacity-60 hover:opacity-80"
+                    ? "border-border bg-foreground/4 hover:bg-foreground/6"
+                    : "border-border/50 bg-foreground/2 opacity-60 hover:opacity-80"
                   }`}
               >
                 {/* File type icon */}
-                <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-lg bg-white/6 border border-white/8">
+                <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-lg bg-foreground/6 border border-border">
                   <FileText className="h-5 w-5 text-muted-foreground" />
                 </div>
 
@@ -863,7 +860,7 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
                     >
                       {typeLabel}
                     </span>
-                    <span className="text-[10px] font-medium text-white/40 border border-white/10 bg-white/5 rounded-full px-2 py-0.5">
+                    <span className="text-[10px] font-medium text-muted-foreground border border-border bg-foreground/5 rounded-full px-2 py-0.5">
                       v{doc.version_number}
                     </span>
                     {isCurrent && (
@@ -874,11 +871,11 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                     <span>{formatFileSize(doc.file_size_bytes)}</span>
-                    <span className="text-white/20">·</span>
+                    <span className="text-muted-foreground/40">·</span>
                     <span title={formatDateTime(doc.uploaded_at)}>{timeAgo(doc.uploaded_at)}</span>
                     {doc.change_notes && (
                       <>
-                        <span className="text-white/20">·</span>
+                        <span className="text-muted-foreground/40">·</span>
                         <span className="italic truncate max-w-[200px]" title={doc.change_notes}>
                           {doc.change_notes}
                         </span>
@@ -946,7 +943,7 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
                     title="Download"
                   >
                     {downloadingId === doc.id ? (
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-teal-400 animate-spin" />
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-foreground/20 border-t-teal-400 animate-spin" />
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
@@ -967,7 +964,7 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
                       title="Soft-delete this version"
                     >
                       {deleteMutation.isPending && deletingId === doc.id ? (
-                        <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-red-400 animate-spin" />
+                        <div className="h-3.5 w-3.5 rounded-full border-2 border-foreground/20 border-t-red-400 animate-spin" />
                       ) : (
                         <Trash2 className="h-4 w-4" />
                       )}
@@ -1156,12 +1153,12 @@ export function StandardDetailPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { icon: Tag, label: "TC Committee", value: standard.tc_committee ?? "—" },
-          { 
-            icon: GitBranch, 
-            label: "ISO Stage", 
-            value: standard.stage_code && standard.stage_name 
-              ? `${standard.stage_code} — ${standard.stage_name}` 
-              : (standard.stage_code || standard.stage_name || "—") 
+          {
+            icon: GitBranch,
+            label: "ISO Stage",
+            value: standard.stage_code && standard.stage_name
+              ? `${standard.stage_code} — ${standard.stage_name}`
+              : (standard.stage_code || standard.stage_name || "—")
           },
           { icon: Calendar, label: "Stage Date", value: formatDate(standard.published_date) },
           { icon: Calendar, label: "Last Updated", value: formatDate(standard.updated_at) },
@@ -1270,7 +1267,7 @@ export function StandardDetailPage() {
                 <GitBranch className="h-4 w-4" />
                 Change History
                 {history && (
-                  <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px]">
+                  <span className="ml-1 rounded-full bg-foreground/10 px-2 py-0.5 text-[10px]">
                     {history.total}
                   </span>
                 )}
@@ -1279,7 +1276,7 @@ export function StandardDetailPage() {
                 <FileText className="h-4 w-4" />
                 Documents
                 {documentsData && documentsData.total > 0 && (
-                  <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px]">
+                  <span className="ml-1 rounded-full bg-foreground/10 px-2 py-0.5 text-[10px]">
                     {documentsData.total}
                   </span>
                 )}

@@ -210,7 +210,7 @@ export function UsersPage() {
 
         {/* Pagination */}
         {data && totalPages > 1 && (
-          <div className="flex items-center justify-end gap-2 border-t border-white/8 px-6 py-3">
+          <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-3">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
               Previous
             </Button>
@@ -280,7 +280,7 @@ export function UsersPage() {
                     className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors capitalize ${
                       role === r
                         ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-white/10 text-muted-foreground hover:border-white/20"
+                        : "border-border text-muted-foreground hover:border-foreground/20"
                     }`}
                   >
                     {r}
@@ -337,7 +337,7 @@ export function UsersPage() {
                     className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors capitalize ${
                       editRole === r
                         ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-white/10 text-muted-foreground hover:border-white/20"
+                        : "border-border text-muted-foreground hover:border-foreground/20"
                     }`}
                   >
                     {r}

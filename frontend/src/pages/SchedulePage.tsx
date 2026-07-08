@@ -103,12 +103,12 @@ export function SchedulePage() {
               {data.items.map((feed) => (
                 <div
                   key={feed.id}
-                  className="flex items-center gap-4 rounded-lg border border-white/8 bg-white/4 p-4 transition-colors hover:bg-white/6"
+                  className="flex items-center gap-4 rounded-lg border border-border bg-foreground/4 p-4 transition-colors hover:bg-foreground/6"
                 >
                   {/* Status indicator */}
                   <div
                     className={`h-2 w-2 rounded-full shrink-0 ${
-                      feed.is_enabled ? "bg-teal-400" : "bg-white/20"
+                      feed.is_enabled ? "bg-teal-400" : "bg-foreground/20"
                     }`}
                   />
 
@@ -118,7 +118,7 @@ export function SchedulePage() {
                       <Rss className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                       <p className="text-sm font-medium text-foreground truncate">{feed.name}</p>
                       {feed.tc_committee && (
-                        <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-muted-foreground">
+                        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
                           {feed.tc_committee}
                         </span>
                       )}
@@ -148,7 +148,7 @@ export function SchedulePage() {
                     className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium border ${
                       feed.is_enabled
                         ? "border-teal-500/30 bg-teal-500/10 text-teal-300"
-                        : "border-white/10 bg-white/5 text-muted-foreground"
+                        : "border-border bg-foreground/5 text-muted-foreground"
                     }`}
                   >
                     {feed.is_enabled ? "Active" : "Disabled"}

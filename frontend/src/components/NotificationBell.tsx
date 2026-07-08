@@ -37,7 +37,7 @@ export function NotificationBell() {
     switch (severity) {
       case "critical": return "border-red-500/20 bg-red-500/10";
       case "warning": return "border-yellow-500/20 bg-yellow-500/10";
-      default: return "border-white/8 bg-white/4";
+      default: return "border-border bg-foreground/4";
     }
   };
 
@@ -49,7 +49,7 @@ export function NotificationBell() {
           "relative flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-200",
           open
             ? "border-indigo-500/30 bg-indigo-600/20 text-indigo-300"
-            : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/8"
+            : "border-border bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-foreground/8"
         )}
       >
         <Bell className="h-4 w-4" />
@@ -65,9 +65,9 @@ export function NotificationBell() {
           {/* Backdrop */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           {/* Panel */}
-          <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-white/10 bg-slate-900/95 backdrop-blur-xl shadow-2xl">
+          <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-border bg-popover/95 backdrop-blur-xl shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-foreground">Notifications</p>
                 {unreadCount > 0 && (

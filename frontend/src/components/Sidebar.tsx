@@ -61,7 +61,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   });
 
   return (
-    <aside
+    <aside id="leftWrapper"
       className={cn(
         "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/8 bg-slate-950/80 backdrop-blur-xl transition-all duration-300 ease-in-out",
         collapsed ? "w-[60px]" : "w-60"

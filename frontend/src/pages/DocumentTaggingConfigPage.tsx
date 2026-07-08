@@ -76,8 +76,8 @@ export function DocumentTaggingConfigPage() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4 py-4">
-              <div className="h-4 bg-white/5 rounded w-1/4 animate-pulse"></div>
-              <div className="h-10 bg-white/5 rounded animate-pulse"></div>
+              <div className="h-4 bg-foreground/5 rounded w-1/4 animate-pulse"></div>
+              <div className="h-10 bg-foreground/5 rounded animate-pulse"></div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

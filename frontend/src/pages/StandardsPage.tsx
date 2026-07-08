@@ -156,13 +156,15 @@ export function StandardsPage() {
     `rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
       active
         ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-        : "border-white/10 text-muted-foreground hover:border-white/20"
+        : "border-border text-muted-foreground hover:border-foreground/20"
     }`;
 
   const totalPages = data ? Math.ceil(data.total / (params.page_size ?? 25)) : 1;
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-6">
+      {/* Sticky top section: header, search, filters */}
+      <div className="flex-shrink-0 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -221,7 +223,7 @@ export function StandardsPage() {
 
         {/* Expanded filters */}
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-white/8 space-y-3">
+          <div className="mt-4 pt-4 border-t border-border space-y-3">
             {/* Row 1 — Status pills */}
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground font-medium">Status</p>
@@ -252,14 +254,14 @@ export function StandardsPage() {
                       setCommitteeFilter(e.target.value);
                       setParams((p) => ({ ...p, page: 1 }));
                     }}
-                    className="appearance-none min-w-[180px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="appearance-none min-w-[180px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">All Committees</option>
                     {committees.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
 
@@ -273,14 +275,14 @@ export function StandardsPage() {
                       setStandardsBodyFilter(e.target.value);
                       setParams((p) => ({ ...p, page: 1 }));
                     }}
-                    className="appearance-none min-w-[140px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="appearance-none min-w-[140px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">All Bodies</option>
                     {standardsBodies.map((b) => (
                       <option key={b} value={b}>{b}</option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
 
@@ -294,13 +296,13 @@ export function StandardsPage() {
                       setStageFilter(e.target.value);
                       setParams((p) => ({ ...p, page: 1 }));
                     }}
-                    className="appearance-none min-w-[200px] cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 pr-8 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="appearance-none min-w-[200px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     {STAGE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
 
@@ -346,12 +348,13 @@ export function StandardsPage() {
           </div>
         )}
       </Card>
+      </div>
 
-      {/* Table */}
-      <Card className="overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-white/10 hover:bg-transparent">
+      {/* Table — independently scrollable, fills remaining height */}
+      <Card className="flex flex-1 min-h-0 flex-col overflow-hidden">
+        <Table containerClassName="flex-1 min-h-0 overflow-y-auto">
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableRow className="border-b border-border hover:bg-transparent">
               <TableHead className="w-8" />
               <TableHead className="w-36">
                 <button
@@ -436,7 +439,7 @@ export function StandardsPage() {
                 const primaryRow = (
                   <TableRow
                     key={std.id}
-                    className="cursor-pointer hover:bg-white/4 transition-colors"
+                    className="cursor-pointer hover:bg-foreground/4 transition-colors"
                     onClick={() => navigate(`/standards/${std.id}`)}
                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -446,7 +449,7 @@ export function StandardsPage() {
                           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-all duration-200 ${
                             expanded
                               ? "bg-indigo-500/20 text-indigo-300"
-                              : "bg-slate-700 text-slate-300"
+                              : "bg-secondary text-secondary-foreground"
                           }`}
                         >
                           {expanded ? (
@@ -512,7 +515,7 @@ export function StandardsPage() {
                 const versionRows = std.versions.map((v) => (
                   <TableRow
                     key={v.id}
-                    className="cursor-pointer border-l-2 border-indigo-500/30 ml-4 bg-slate-800/40 transition-all duration-200 hover:bg-slate-800/60"
+                    className="cursor-pointer border-l-2 border-indigo-500/30 ml-4 bg-foreground/5 transition-all duration-200 hover:bg-foreground/8"
                     onClick={() => navigate(`/standards/${v.id}`)}
                   >
                     <TableCell />
@@ -550,7 +553,7 @@ export function StandardsPage() {
 
         {/* Pagination */}
         {data && totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-white/8 px-6 py-3">
+          <div className="flex items-center justify-between border-t border-border px-6 py-3">
             <p className="text-xs text-muted-foreground">
               Showing {(((params.page ?? 1) - 1) * (params.page_size ?? 25)) + 1}–
               {Math.min((params.page ?? 1) * (params.page_size ?? 25), data.total)} of{" "}

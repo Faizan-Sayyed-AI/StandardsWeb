@@ -95,7 +95,7 @@ export function DashboardPage() {
             Here's what's happening with your ISO standards library today.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground border border-white/8 rounded-lg px-3 py-1.5 bg-white/4">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 bg-foreground/4">
           <Activity className="h-3.5 w-3.5 text-teal-400" />
           <span>Live monitoring active</span>
         </div>
@@ -156,9 +156,9 @@ export function DashboardPage() {
                   <a
                     key={std.id}
                     href={`/standards/${std.id}`}
-                    className="flex items-center gap-4 px-6 py-3.5 hover:bg-white/4 transition-colors group"
+                    className="flex items-center gap-4 px-6 py-3.5 hover:bg-foreground/4 transition-colors group"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/4 text-xs font-bold text-indigo-300 group-hover:border-indigo-500/30 transition-colors">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground/4 text-xs font-bold text-indigo-300 group-hover:border-indigo-500/30 transition-colors">
                       {std.iso_reference.replace(/[^A-Z/]/g, "").slice(0, 3)}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -229,7 +229,7 @@ export function DashboardPage() {
                         {item.value ?? "—"} ({pct}%)
                       </span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${item.color}`}
                         style={{ width: `${pct}%` }}

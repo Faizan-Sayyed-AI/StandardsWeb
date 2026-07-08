@@ -79,12 +79,12 @@ export function Layout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+    <div  className="flex h-screen bg-background overflow-hidden">
+      <Sidebar  collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* Main area — left padding tracks sidebar width */}
-      <div className={cn(
-        "flex flex-1 flex-col transition-all duration-300 ease-in-out",
+      <div id="rightWrapper" className={cn(
+        "flex flex-1 flex-col h-screen transition-all duration-300 ease-in-out",
         sidebarCollapsed ? "pl-[60px]" : "pl-60"
       )}>
         {/* Top header bar */}
@@ -98,10 +98,10 @@ export function Layout() {
 
           <div className="flex items-center gap-2">
             {/* Global search stub */}
-            <button className="hidden sm:flex items-center gap-2 h-9 rounded-lg border border-white/10 bg-white/5 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-white/8 transition-colors w-48">
+            <button className="hidden sm:flex items-center gap-2 h-9 rounded-lg border border-border bg-foreground/5 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/8 transition-colors w-48">
               <Search className="h-3.5 w-3.5 shrink-0" />
               <span>Search standards…</span>
-              <kbd className="ml-auto text-[10px] font-mono border border-white/10 rounded px-1">
+              <kbd className="ml-auto text-[10px] font-mono border border-border rounded px-1">
                 ⌘K
               </kbd>
             </button>
@@ -123,7 +123,7 @@ export function Layout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-6 animate-fade-in-up">
+        <main className="flex-1 min-h-0 overflow-y-auto p-6 animate-fade-in-up">
           <Outlet />
         </main>
       </div>
