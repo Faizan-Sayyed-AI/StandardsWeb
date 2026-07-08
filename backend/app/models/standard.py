@@ -7,6 +7,7 @@ Schema (PRD §6.2):
   title           TEXT        NOT NULL
   edition         VARCHAR(50) NULLABLE
   tc_committee    VARCHAR(100) NULLABLE
+  standards_body  VARCHAR(50) NULLABLE  (ISO, IEC, IEEE, ASTM, or free text)
   status          ENUM(active|revised|amended|withdrawn|replaced|under_review) NOT NULL
   is_purchased    BOOLEAN     DEFAULT FALSE
   purchased_at    TIMESTAMPTZ NULLABLE
@@ -52,6 +53,7 @@ class Standard(AsyncBase):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     edition: Mapped[str | None] = mapped_column(String(50), nullable=True)
     tc_committee: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    standards_body: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     status: Mapped[StandardStatus] = mapped_column(
         Enum(StandardStatus, name="standard_status_enum", create_type=False),
         nullable=False,
