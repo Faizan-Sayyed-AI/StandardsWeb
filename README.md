@@ -1,8 +1,11 @@
 # StandardSphere
 
-Automated discovery, monitoring, and management of ISO technical committee standards.
+Automated discovery, monitoring, and management of ISO/IEC/IEEE/ASTM technical standards —
+RSS feed polling, change history, document storage with AI tagging, notifications, and a
+full audit trail. See **[OVERVIEW.md](./OVERVIEW.md)** for a short, non-technical walkthrough
+of what the application does end to end.
 
-**Stack:** FastAPI · PostgreSQL 16 · Celery 5 · Redis 7 · React + Vite · Docker Compose
+**Stack:** FastAPI · PostgreSQL 16 · Celery 5 + Beat · Redis 7 · React 19 + Vite · Docker Compose
 
 ---
 
@@ -33,8 +36,9 @@ make migrate
 # 4. Seed the default admin user (admin@ists.local / Admin1234!)
 make seed
 
-# 5. Open API docs
-# http://localhost:8000/docs
+# 5. Open the app
+# Frontend: http://localhost:5173
+# API docs: http://localhost:8000/docs
 ```
 
 ---
@@ -43,7 +47,7 @@ make seed
 
 | Command | Description |
 |---|---|
-| `make up` | Build images and start all 6 containers |
+| `make up` | Build images and start all 7 containers |
 | `make down` | Stop and remove all containers |
 | `make logs` | Follow web + worker + beat logs |
 | `make migrate` | Apply pending Alembic migrations |
@@ -59,11 +63,12 @@ make seed
 
 | Service | Port |
 |---|---|
+| React dev server (frontend) | http://localhost:5173 |
 | FastAPI (web) | http://localhost:8000 |
 | Swagger UI | http://localhost:8000/docs |
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
-| React dev server | http://localhost:5173 (M3) |
+| MailHog (dev email capture) | http://localhost:8025 (UI) / 1025 (SMTP) |
 
 ---
 
@@ -83,23 +88,50 @@ make seed
 
 ```
 Standards_Version_Control_Project/
-├── backend/            FastAPI app, Celery workers, Alembic migrations
-├── frontend/           React + Vite SPA (scaffold in M3)
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/       REST endpoints (auth, standards, feeds, documents,
+│   │   │                 notifications, distribution-lists, users, dashboard, admin)
+│   │   ├── models/       SQLAlchemy models (standards, history, feeds, documents,
+│   │   │                 users, notifications, audit log, celery schedules)
+│   │   ├── services/     Business logic per domain (one service per model area)
+│   │   ├── tasks/        Celery tasks: feeds, documents, notifications, maintenance
+│   │   ├── core/         Cross-cutting: security, storage backend, email, config
+│   │   └── celery_app.py Celery app + Beat scheduler wiring
+│   ├── alembic/versions/ Database migrations
+│   └── scripts/          One-off maintenance/backfill scripts
+├── frontend/
+│   └── src/
+│       ├── pages/         One page per feature (Standards, Feeds, Schedule, Users,
+│       │                   Distribution Lists, SMTP Settings, Document Tagging,
+│       │                   Audit Logs, Dashboard, Standard Detail, Login)
+│       ├── components/    Shared UI: Sidebar, Layout, NotificationBell, ui/ primitives
+│       ├── api/           Typed API client functions (axios)
+│       └── contexts/      Auth + Toast React contexts
 ├── docker/             Supplementary Docker assets (nginx, etc.)
 ├── .github/workflows/  CI/CD pipelines
-├── docker-compose.yml  Local dev orchestration (6 services)
+├── docker-compose.yml  Local dev orchestration (7 services: web, worker, beat, db,
+│                        redis, frontend, mailhog)
 ├── .env.example        Environment variable template
 └── Makefile            Dev workflow shortcuts
 ```
 
-## Milestone Build Order
+## Current State
 
-| Milestone | Status | Scope |
-|---|---|---|
-| **M1 — Foundation** | ✅ Complete | Docker Compose, FastAPI skeleton, DB schema, JWT auth, User CRUD |
-| M2 — Feed Engine | ⬜ | RSS polling, Celery tasks, standard_history |
-| M3 — Core UI | ⬜ | React + Vite, Dashboard, Standards list |
-| M4 — Documents | ⬜ | Upload, versioning, StorageBackend |
-| M5 — Notifications | ⬜ | In-app + email, distribution lists |
-| M6 — Audit & Polish | ⬜ | Audit log, worker health, e2e tests |
-| M7 — AWS Deployment | ⬜ | ECS, RDS, S3, ALB, CI/CD |
+The application is feature-complete for local development and in active use:
+
+- ✅ **Auth & users** — JWT login, role-based access (admin / manager / viewer), user CRUD
+- ✅ **Standards library** — search, filter by committee/body/stage/status, version grouping,
+  manual entry for standards bodies without an RSS feed
+- ✅ **Feed engine** — per-committee RSS polling on a configurable cron schedule via Celery
+  Beat, full change-history timeline per standard
+- ✅ **Documents** — upload/version/download per standard, async AI-based auto-tagging
+  (admin-configurable external tagging service)
+- ✅ **Notifications** — in-app + email, distribution lists mapped to event types, SMTP
+  configurable from the UI (MailHog in local dev)
+- ✅ **Audit log** — every mutating action recorded with actor, IP, and before/after payload
+- ✅ **Light/dark theming** across the full frontend
+- ⬜ **Automated test suite** — not yet written (`make test` is wired up, no tests exist yet)
+- ⬜ **AWS deployment** — planned, see `DEPLOYMENT.md` (currently Docker Compose only)
+
+> Schedule times throughout the app (feed polling, Beat) are in **UTC**, not local time.
