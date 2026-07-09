@@ -19,6 +19,11 @@ from celery import Celery
 
 from app.config import settings
 
+# MUST run before Beat's DatabaseScheduler (or any ORM write to the scheduler
+# tables): replaces celery-sqlalchemy-scheduler's SQLAlchemy-1.x-only mapper
+# listeners, which otherwise crash-loop the beat process. See module docstring.
+import app.core.celery_scheduler_compat  # noqa: F401  isort: skip
+
 # ── Application instance ──────────────────────────────────────────────────────
 celery: Celery = Celery("ists")
 
