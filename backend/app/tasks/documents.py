@@ -7,6 +7,8 @@ See docs/superpowers/specs/2026-07-07-document-ai-tagging-design.md.
 """
 
 import asyncio
+import os
+import tempfile
 import uuid
 
 import httpx
@@ -76,28 +78,47 @@ async def _tag_document_async(document_id: str) -> dict:
         storage = get_storage_backend()
         storage_ref = storage.download_url(doc.storage_path, ttl=300)
 
-        if storage_ref.startswith("http://") or storage_ref.startswith("https://"):
-            async with httpx.AsyncClient(timeout=60) as client:
-                file_resp = await client.get(storage_ref)
-                file_resp.raise_for_status()
-                file_bytes = file_resp.content
-        else:
-            with open(storage_ref, "rb") as f:
-                file_bytes = f.read()
-
         headers = {}
         api_key = settings_dict.get("DOCUMENT_TAGGING_API_KEY", "")
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
-        async with httpx.AsyncClient(timeout=120) as client:
-            response = await client.post(
-                url,
-                files={"file": (doc.filename, file_bytes, doc.mime_type)},
-                headers=headers,
-            )
-            response.raise_for_status()
-            result = response.json()
+        # Never hold the whole file in memory (uploads can be tens of MB and
+        # the worker shares a small host): S3 files are streamed to a temp
+        # file, and the multipart POST streams from an open file handle —
+        # httpx chunks file-like objects instead of buffering the body.
+        tmp_path: str | None = None
+        try:
+            if storage_ref.startswith("http://") or storage_ref.startswith("https://"):
+                with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                    tmp_path = tmp.name
+                    async with httpx.AsyncClient(timeout=60) as client:
+                        async with client.stream("GET", storage_ref) as file_resp:
+                            file_resp.raise_for_status()
+                            async for chunk in file_resp.aiter_bytes(1024 * 1024):
+                                tmp.write(chunk)
+                file_path = tmp_path
+            else:
+                file_path = storage_ref
+
+            # Generous read timeout: the tagging service is LLM-backed and has been
+            # observed to take well over 120s on larger PDFs (ReadTimeout at exactly
+            # 120s on documents that later tagged fine).
+            with open(file_path, "rb") as fh:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(300, connect=15)) as client:
+                    response = await client.post(
+                        url,
+                        files={"file": (doc.filename, fh, doc.mime_type)},
+                        headers=headers,
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+        finally:
+            if tmp_path is not None:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
 
         search_text = _build_search_text(result)
         await document_tag_service.mark_tag_result(
@@ -153,22 +174,25 @@ def tag_document(self, document_id: str) -> dict:
     except Exception as exc:
         retries = self.request.retries
         is_final = retries >= self.max_retries
+        # str() of httpx transport errors (ReadTimeout(''), ConnectError('')) is
+        # empty, which left error_message blank in the UI and `error=` in logs.
+        error_msg = str(exc) or type(exc).__name__
 
         if is_final:
             log.error(
                 "tag_document_permanently_failed",
                 document_id=document_id,
                 retries=retries,
-                error=str(exc),
+                error=error_msg,
             )
-            asyncio.run(_mark_tagging_permanently_failed(document_id, str(exc)))
-            return {"status": "permanently_failed", "document_id": document_id, "error": str(exc)}
+            asyncio.run(_mark_tagging_permanently_failed(document_id, error_msg))
+            return {"status": "permanently_failed", "document_id": document_id, "error": error_msg}
 
         countdown = 60 * (2 ** retries)
         log.warning(
             "tag_document_retrying",
             document_id=document_id,
-            error=str(exc),
+            error=error_msg,
             retry_number=retries + 1,
             countdown_seconds=countdown,
         )

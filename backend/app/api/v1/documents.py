@@ -13,7 +13,7 @@ S3 storage:    download returns a pre-signed URL (307 redirect).
 
 import uuid
 
-from fastapi import APIRouter, Form, Query, Request, UploadFile, status
+from fastapi import APIRouter, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, RedirectResponse
 
 from app.api.deps import AdminUser, CurrentUser, DBSession, ManagerOrAdminUser
@@ -103,18 +103,28 @@ async def upload_document(
 
     Returns 404 if the standard does not exist.
     Returns 409 if an identical file already exists for this standard.
+    Returns 413 if the file exceeds MAX_UPLOAD_SIZE_MB.
     Returns 422 if the file type is not allowed.
     """
-    file_bytes = await file.read()
-    file_size = len(file_bytes)
+    # Starlette has already spooled the upload to a temp file — pass that
+    # file object through instead of buffering the whole upload in memory
+    # (service-side MIME sniff, sha256, and storage upload all read chunked).
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    upload_stream = file.file
+    upload_stream.seek(0, 2)
+    file_size = upload_stream.tell()
+    upload_stream.seek(0)
+    if file_size > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File is {file_size / (1024 * 1024):.1f} MB; the maximum allowed size "
+            f"is {settings.MAX_UPLOAD_SIZE_MB} MB.",
+        )
     original_filename = file.filename or "document"
-
-    from io import BytesIO
-    file_io = BytesIO(file_bytes)
 
     doc = await document_service.upload_document(
         standard_id=standard_id,
-        file_data=file_io,
+        file_data=upload_stream,
         original_filename=original_filename,
         file_size_bytes=file_size,
         change_notes=change_notes,

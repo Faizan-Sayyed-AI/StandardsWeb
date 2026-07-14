@@ -1,13 +1,9 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import * as ToastPrimitive from "@radix-ui/react-toast";
 import { X } from "lucide-react";
+import { pushToast, type QueuedToast } from "@/lib/toastQueue";
 
-interface ToastMessage {
-  id: string;
-  title?: string;
-  description: string;
-  variant?: "default" | "destructive";
-}
+type ToastMessage = QueuedToast;
 
 interface ToastContextType {
   toast: (message: Omit<ToastMessage, "id">) => void;
@@ -28,7 +24,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const toast = useCallback(({ title, description, variant = "default" }: Omit<ToastMessage, "id">) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, title, description, variant }]);
+    // Capped + deduped: background pollers retrying against a failing API must
+    // not accumulate toasts indefinitely (Radix pauses dismissal on hover/blur).
+    setToasts((prev) => pushToast(prev, { id, title, description, variant }));
   }, []);
 
   const removeToast = useCallback((id: string) => {

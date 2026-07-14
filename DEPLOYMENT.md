@@ -529,6 +529,19 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+### Alternative: S3 + CloudFront frontend hosting
+
+If you host the frontend from an S3 bucket (with or without CloudFront) instead of Nginx, two things WILL break unless handled:
+
+1. **MIME types.** S3 serves objects with the `Content-Type` stored at upload time — the default is `binary/octet-stream`, which browsers refuse to execute for ES module scripts (`Failed to load module script...`). Uploads must set `Content-Type` explicitly for `.js` (`text/javascript`) and `.css` (`text/css`), and CloudFront caches the header, so an invalidation is required after fixing it.
+2. **API routing.** There is no Nginx in front of the SPA to proxy `/api/*`. Either add a CloudFront behavior routing `/api/*` to the EC2 origin, or build with `VITE_API_URL` pointing at the backend's own domain (and set `CORS_ORIGINS` accordingly). Production builds now **fail** if `VITE_API_URL` is unset.
+
+Use the provided script, which builds, uploads with correct MIME types, invalidates CloudFront, and verifies the result:
+
+```powershell
+.\scripts\deploy-frontend.ps1 -BucketName <bucket> -ApiUrl https://yourdomain.com -DistributionId <EDIST_ID>
+```
+
 ---
 
 ## 12. SSL / HTTPS (Certbot)

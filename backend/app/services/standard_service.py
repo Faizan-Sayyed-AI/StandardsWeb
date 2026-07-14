@@ -1,4 +1,4 @@
-"""
+﻿"""
 Standards read service (M3).
 
 All endpoints are read-only in M3. Write operations (purchase, status change)
@@ -6,12 +6,12 @@ are added in M4/M6. Supports filtered, sorted, paginated list queries.
 """
 
 import uuid
-from datetime import date
 from typing import Literal
 
 import structlog
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.document import Document
@@ -23,29 +23,20 @@ from app.schemas.standard import StandardCreate, StandardGrouped, StandardListIt
 log = structlog.get_logger(__name__)
 
 
-def _stage_matches_sql(stage_filter: str):
+def _stage_matches_sql(stage_filter: str, entity=Standard):
     """
     Build the SQLAlchemy condition for a stage filter.
 
-    A filter ending in ".x" (e.g. "20.x") means "any stage in this phase" —
+    A filter ending in ".x" (e.g. "20.x") means "any stage in this phase" â€”
     matched as a prefix. Anything else is an exact stage_code match. Mirrors
     the frontend's matchesStageFilter() semantics in StandardsPage.tsx.
+
+    `entity` allows applying the filter to an aliased Standard (grouped path).
     """
     if stage_filter.endswith(".x"):
         prefix = stage_filter[:-1]  # "20.x" -> "20."
-        return Standard.stage_code.like(f"{prefix}%")
-    return Standard.stage_code == stage_filter
-
-
-def _stage_matches(stage_code: str | None, stage_filter: str | None) -> bool:
-    """Python equivalent of _stage_matches_sql, for the in-memory grouped-standards path."""
-    if not stage_filter:
-        return True
-    if not stage_code:
-        return False
-    if stage_filter.endswith(".x"):
-        return stage_code.startswith(stage_filter[:-1])
-    return stage_code == stage_filter
+        return entity.stage_code.like(f"{prefix}%")
+    return entity.stage_code == stage_filter
 
 
 async def list_standards(
@@ -72,7 +63,7 @@ async def list_standards(
         standards_body: Exact match on standards_body field.
         stage:        Exact stage_code match, or a ".x" phase prefix (e.g. "20.x").
         is_purchased: Filter by purchase flag.
-        sort_by:      Column name — one of: iso_reference, title, updated_at, status.
+        sort_by:      Column name â€” one of: iso_reference, title, updated_at, status.
         sort_order:   'asc' or 'desc'.
 
     Returns:
@@ -140,38 +131,6 @@ async def list_standards(
     return standards, total
 
 
-def _matches_filters(
-    standard: Standard,
-    *,
-    search: str | None,
-    status: StandardStatus | None,
-    tc_committee: str | None,
-    standards_body: str | None,
-    stage: str | None,
-    is_purchased: bool | None,
-    tag_matched_ids: set[uuid.UUID] | None = None,
-) -> bool:
-    """Evaluate the same filter semantics as list_standards' SQL conditions, in Python."""
-    if search:
-        needle = search.strip().lower()
-        haystacks = [standard.iso_reference, standard.title, standard.tc_committee]
-        text_match = any(needle in h.lower() for h in haystacks if h)
-        tag_match = tag_matched_ids is not None and standard.id in tag_matched_ids
-        if not (text_match or tag_match):
-            return False
-    if status is not None and standard.status != status:
-        return False
-    if tc_committee is not None and standard.tc_committee != tc_committee:
-        return False
-    if standards_body is not None and standard.standards_body != standards_body:
-        return False
-    if not _stage_matches(standard.stage_code, stage):
-        return False
-    if is_purchased is not None and standard.is_purchased != is_purchased:
-        return False
-    return True
-
-
 async def get_grouped_standards(
     db: AsyncSession,
     *,
@@ -191,81 +150,106 @@ async def get_grouped_standards(
     variants of the same number collapsed into one primary row plus a versions list.
 
     Amendment/corrigendum rows (parent_standard_id IS NOT NULL) never participate in
-    grouping — they're excluded entirely, since they already have their own dedicated
+    grouping â€” they're excluded entirely, since they already have their own dedicated
     UI (the Amendments card on the parent standard's detail page).
 
-    Filters apply only to whether a group's primary matches — a kept group's other
-    versions ride along unfiltered. Grouping and pagination are done in Python because
-    a group split across two row-pages would be broken; this is fine at this table's
-    scale (fetches all non-amendment rows once per call).
-    """
-    result = await db.execute(
-        select(Standard).where(Standard.parent_standard_id.is_(None))
-    )
-    all_standards = list(result.scalars().all())
+    Filters apply only to whether a group's primary matches â€” a kept group's other
+    versions ride along unfiltered.
 
-    tag_matched_ids: set[uuid.UUID] | None = None
+    Everything happens in SQL: DISTINCT ON picks each group's primary (latest
+    published_date, NULLs lowest, id as tie-break), filters/sort/pagination run
+    over those primaries, and one second bounded query fetches the page's other
+    versions. The table is never fully loaded into memory.
+    """
+    # Rows with no base_reference are each their own singleton group keyed by id.
+    group_key = func.coalesce(Standard.base_reference, cast(Standard.id, String))
+    primary_sq = (
+        select(Standard)
+        .where(Standard.parent_standard_id.is_(None))
+        .distinct(group_key)
+        .order_by(group_key, Standard.published_date.desc().nulls_last(), Standard.id)
+        .subquery("group_primaries")
+    )
+    primary = aliased(Standard, primary_sq)
+
+    conditions = []
     if search:
         search_term = f"%{search.strip()}%"
-        tag_result = await db.execute(
-            select(Document.standard_id)
-            .join(DocumentTag, DocumentTag.document_id == Document.id)
-            .where(DocumentTag.search_text.ilike(search_term))
-            .distinct()
+        conditions.append(
+            or_(
+                primary.iso_reference.ilike(search_term),
+                primary.title.ilike(search_term),
+                primary.tc_committee.ilike(search_term),
+                primary.id.in_(
+                    select(Document.standard_id)
+                    .join(DocumentTag, DocumentTag.document_id == Document.id)
+                    .where(DocumentTag.search_text.ilike(search_term))
+                ),
+            )
         )
-        tag_matched_ids = {row[0] for row in tag_result.all()}
+    if status is not None:
+        conditions.append(primary.status == status)
+    if tc_committee is not None:
+        conditions.append(primary.tc_committee == tc_committee)
+    if standards_body is not None:
+        conditions.append(primary.standards_body == standards_body)
+    if stage:
+        conditions.append(_stage_matches_sql(stage, primary))
+    if is_purchased is not None:
+        conditions.append(primary.is_purchased == is_purchased)
 
-    # Group by base_reference. Rows with no base_reference (shouldn't happen
-    # post-backfill) are each their own singleton group keyed by their own id.
-    groups: dict[str, list[Standard]] = {}
-    for s in all_standards:
-        key = s.base_reference or f"__singleton__{s.id}"
-        groups.setdefault(key, []).append(s)
+    query = select(primary)
+    if conditions:
+        query = query.where(*conditions)
 
-    def _primary(members: list[Standard]) -> Standard:
-        return max(
-            members,
-            key=lambda s: s.published_date or date.min,
-        )
+    total: int = (
+        await db.execute(select(func.count()).select_from(query.subquery()))
+    ).scalar_one()
 
-    kept: list[tuple[str, Standard, list[Standard]]] = []
-    for key, members in groups.items():
-        primary = _primary(members)
-        if not _matches_filters(
-            primary,
-            search=search,
-            status=status,
-            tc_committee=tc_committee,
-            standards_body=standards_body,
-            stage=stage,
-            is_purchased=is_purchased,
-            tag_matched_ids=tag_matched_ids,
-        ):
-            continue
-        versions = [m for m in members if m.id != primary.id]
-        kept.append((key, primary, versions))
-
-    sort_key_map = {
-        "iso_reference": lambda t: t[1].iso_reference,
-        "title": lambda t: t[1].title,
-        "updated_at": lambda t: t[1].updated_at,
-        "status": lambda t: t[1].status.value,
-        "created_at": lambda t: t[1].created_at,
-        "published_date": lambda t: t[1].published_date or date.min,
+    sort_column_map = {
+        "iso_reference": primary.iso_reference,
+        "title": primary.title,
+        "updated_at": primary.updated_at,
+        "status": primary.status,
+        "created_at": primary.created_at,
+        "published_date": primary.published_date,
     }
-    sort_key = sort_key_map.get(sort_by, sort_key_map["updated_at"])
-    kept.sort(key=sort_key, reverse=(sort_order == "desc"))
+    sort_col = sort_column_map.get(sort_by, primary.updated_at)
+    # NULLs sort as the smallest value (the UI treats "no date" as oldest).
+    # id tie-break keeps pagination stable: bulk-imported rows share one
+    # updated_at, so without it page membership shifts between requests.
+    if sort_order == "desc":
+        query = query.order_by(sort_col.desc().nulls_last(), primary.id)
+    else:
+        query = query.order_by(sort_col.asc().nulls_first(), primary.id)
 
-    total = len(kept)
     offset = (page - 1) * page_size
-    page_slice = kept[offset : offset + page_size]
+    query = query.offset(offset).limit(page_size)
+    primaries = list((await db.execute(query)).scalars().all())
+
+    # Second bounded query: every non-amendment member of the page's groups.
+    versions_map: dict[str, list[Standard]] = {}
+    group_refs = [p.base_reference for p in primaries if p.base_reference]
+    if group_refs:
+        members_result = await db.execute(
+            select(Standard)
+            .where(
+                Standard.parent_standard_id.is_(None),
+                Standard.base_reference.in_(group_refs),
+            )
+            .order_by(Standard.published_date.desc().nulls_last(), Standard.id)
+        )
+        for member in members_result.scalars():
+            versions_map.setdefault(member.base_reference, []).append(member)
 
     grouped: list[StandardGrouped] = []
-    for _key, primary, versions in page_slice:
+    for p in primaries:
+        members = versions_map.get(p.base_reference, []) if p.base_reference else []
+        versions = [m for m in members if m.id != p.id]
         grouped.append(
             StandardGrouped(
-                **StandardListItem.model_validate(primary).model_dump(),
-                base_reference=primary.base_reference,
+                **StandardListItem.model_validate(p).model_dump(),
+                base_reference=p.base_reference,
                 versions=[StandardVersion.model_validate(v) for v in versions],
                 versions_count=len(versions) + 1,
             )
@@ -358,7 +342,7 @@ async def purchase_standard(
     """
     Mark standard as purchased, append standard history row, write audit log.
 
-    Returns (standard, newly_purchased) — newly_purchased is False when the
+    Returns (standard, newly_purchased) â€” newly_purchased is False when the
     standard was already purchased, so callers (the API router) know not to
     re-dispatch a "purchased" notification broadcast on a no-op call.
     """
@@ -371,7 +355,7 @@ async def purchase_standard(
         raise NotFoundError("Standard")
 
     if standard.is_purchased:
-        # Already purchased — a double-click or client retry shouldn't
+        # Already purchased â€” a double-click or client retry shouldn't
         # re-append history or re-broadcast a "purchased" notification to
         # every active user.
         return standard, False
@@ -461,7 +445,7 @@ async def create_standard_manually(
         published_date=payload.published_date,
         external_url=payload.external_url,
         base_reference=_extract_base_reference(payload.iso_reference),
-        # source_feed_id and content_hash stay NULL — this standard has no feed origin
+        # source_feed_id and content_hash stay NULL â€” this standard has no feed origin
     )
     db.add(standard)
     await db.flush()

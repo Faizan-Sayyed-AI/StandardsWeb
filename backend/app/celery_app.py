@@ -41,9 +41,12 @@ celery.conf.update(
     timezone="UTC",
     enable_utc=True,
 
-    # Reliability — re-queue tasks if a worker crashes mid-execution
-    task_acks_late=True,
-    task_reject_on_worker_lost=True,
+    # Ack on receipt (Celery default). Deliberately NOT acks_late: broker
+    # redelivery does not increment task retries, so a task that crashes the
+    # worker (e.g. OOM on a large document) would redeliver and crash it in a
+    # loop forever, and partially-sent notification tasks would re-email
+    # recipients. Failure recovery is handled by each task's self.retry().
+    task_acks_late=False,
 
     # Fair dispatch — workers pull one task at a time
     worker_prefetch_multiplier=1,
