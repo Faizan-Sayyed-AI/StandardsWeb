@@ -20,8 +20,8 @@ PRD §3.4, §11, §14 rules enforced here:
   - Email delivery is M5
 """
 
+import asyncio
 import uuid
-from io import BytesIO
 from typing import BinaryIO
 
 import magic  # python-magic
@@ -127,8 +127,11 @@ async def upload_document(
             "Accepted types: PDF, DOCX, XLSX."
         )
 
-    # 3. SHA-256 checksum + duplicate detection
-    checksum = compute_sha256(file_data)
+    # 3. SHA-256 checksum + duplicate detection.
+    # compute_sha256 streams the file in chunks, but the reads are synchronous
+    # disk I/O — run it in a threadpool so a large upload never blocks the event
+    # loop (and stalls every other request on this worker).
+    checksum = await asyncio.to_thread(compute_sha256, file_data)
     existing = await db.execute(
         select(Document).where(
             Document.standard_id == standard_id,
@@ -160,12 +163,13 @@ async def upload_document(
     for old_doc in prior_versions.scalars().all():
         old_doc.is_current = False
 
-    # 6. Persist to storage
+    # 6. Persist to storage (also blocking I/O — offload to a threadpool).
+    # Note: the S3 backend streams via upload_fileobj, but the local backend
+    # buffers the whole file in memory (dev-only; see LocalStorageBackend.upload).
     storage_key = f"standards/{standard_id}/{next_version}_{original_filename}"
     storage = get_storage_backend()
-    # BytesIO wrapper if needed (file_data is already seeked to 0)
     file_data.seek(0)
-    storage.upload(file_data, storage_key)
+    await asyncio.to_thread(storage.upload, file_data, storage_key)
 
     # 7. Insert Document row
     doc = Document(

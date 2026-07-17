@@ -1,12 +1,22 @@
 """
 Celery tasks: documents queue.
 
-tag_document(document_id) — POSTs a document's file to the admin-configured
+tag_document(document_id) — submits a document's file to the admin-configured
 AI tagging service and stores the structured response in document_tags.
-See docs/superpowers/specs/2026-07-07-document-ai-tagging-design.md.
+
+The service is an async, job-based API:
+  POST {DOCUMENT_TAGGING_URL}            (multipart file=) -> {"job_id": ...}
+  GET  {DOCUMENT_TAGGING_URL}/{id}/stream -> Server-Sent Events, each
+                                            `data: {json}` carrying `status`
+                                            and, once done, a `result` object.
+The `result` object matches the document_tags schema (document_type, summary,
+department, category_01..09), so _build_search_text/mark_tag_result are reused.
+See docs/superpowers/specs/2026-07-07-document-ai-tagging-design.md and
+docs/superpowers/specs/2026-07-17-tagging-integration-and-review-fixes-design.md.
 """
 
 import asyncio
+import json
 import os
 import tempfile
 import uuid
@@ -46,6 +56,70 @@ def _build_search_text(payload: dict) -> str:
     return " ".join(parts).lower()
 
 
+# Terminal job statuses reported by the tagging service. Anything else
+# (e.g. "pending", "processing") means the job is still running.
+_STATUS_COMPLETED = "completed"
+_STATUS_FAILED = "failed"
+
+
+def _extract_result_from_event(event: dict) -> dict | None:
+    """Interpret one job-status object.
+
+    Returns the completed `result` dict, raises RuntimeError on failure, or
+    returns None if the job is not in a terminal state yet.
+    """
+    status_val = str(event.get("status") or "").lower()
+    if status_val == _STATUS_COMPLETED:
+        result = event.get("result")
+        if not isinstance(result, dict):
+            raise RuntimeError("Tagging job completed with no result payload")
+        return result
+    if status_val == _STATUS_FAILED:
+        raise RuntimeError(event.get("error") or "Tagging job failed")
+    return None
+
+
+def _consume_sse_event(data_lines: list[str], document_id: str) -> dict | None:
+    """Parse one buffered SSE event's data lines; delegate to _extract_result_from_event."""
+    if not data_lines:
+        return None
+    payload = "\n".join(data_lines)
+    try:
+        event = json.loads(payload)
+    except json.JSONDecodeError:
+        log.warning("tag_document_bad_sse_event", document_id=document_id, payload=payload[:200])
+        return None
+    return _extract_result_from_event(event)
+
+
+async def _stream_job_result(
+    client: httpx.AsyncClient, stream_url: str, headers: dict, document_id: str
+) -> dict:
+    """Consume the job's SSE stream until a terminal status; return the completed result.
+
+    Raises RuntimeError on job failure or if the stream closes with no terminal event.
+    """
+    buffer: list[str] = []
+    async with client.stream("GET", stream_url, headers=headers) as resp:
+        resp.raise_for_status()
+        async for raw_line in resp.aiter_lines():
+            line = raw_line.rstrip("\r")
+            if line.startswith("data:"):
+                buffer.append(line[len("data:"):].lstrip(" "))
+            elif line == "":
+                # Blank line terminates one SSE event.
+                result = _consume_sse_event(buffer, document_id)
+                buffer.clear()
+                if result is not None:
+                    return result
+            # Other SSE fields (event:, id:, retry:, ":" comments) are ignored.
+        # Flush a trailing event the server didn't terminate with a blank line.
+        result = _consume_sse_event(buffer, document_id)
+        if result is not None:
+            return result
+    raise RuntimeError("Tagging job stream closed before a terminal status")
+
+
 async def _tag_document_async(document_id: str) -> dict:
     from app.database import async_session_factory
     from app.core.document_tagging_config import get_active_document_tagging_settings
@@ -78,7 +152,11 @@ async def _tag_document_async(document_id: str) -> dict:
         storage = get_storage_backend()
         storage_ref = storage.download_url(doc.storage_path, ttl=300)
 
-        headers = {}
+        headers = {
+            # Bypass the ngrok free-tier browser interstitial, which would
+            # otherwise replace the JSON body with an HTML warning page.
+            "ngrok-skip-browser-warning": "true",
+        }
         api_key = settings_dict.get("DOCUMENT_TAGGING_API_KEY", "")
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
@@ -101,18 +179,34 @@ async def _tag_document_async(document_id: str) -> dict:
             else:
                 file_path = storage_ref
 
-            # Generous read timeout: the tagging service is LLM-backed and has been
-            # observed to take well over 120s on larger PDFs (ReadTimeout at exactly
-            # 120s on documents that later tagged fine).
+            # Generous read timeout: the tagging service is LLM-backed and jobs
+            # have been observed to take ~2 min. The same timeout bounds the gap
+            # between SSE events on the stream below.
             with open(file_path, "rb") as fh:
                 async with httpx.AsyncClient(timeout=httpx.Timeout(300, connect=15)) as client:
-                    response = await client.post(
+                    # 1. Submit the job.
+                    submit_resp = await client.post(
                         url,
                         files={"file": (doc.filename, fh, doc.mime_type)},
                         headers=headers,
                     )
-                    response.raise_for_status()
-                    result = response.json()
+                    submit_resp.raise_for_status()
+                    submit_body = submit_resp.json()
+
+                    # 2. If the POST already returned a completed result, use it
+                    # directly (covers a synchronous deployment). Otherwise poll
+                    # the per-job SSE stream until it reaches a terminal status.
+                    result = _extract_result_from_event(submit_body)
+                    if result is None:
+                        job_id = submit_body.get("job_id")
+                        if not job_id:
+                            raise RuntimeError(
+                                f"Tagging service returned no job_id: {submit_body!r}"
+                            )
+                        stream_url = f"{url.rstrip('/')}/{job_id}/stream"
+                        result = await _stream_job_result(
+                            client, stream_url, headers, document_id
+                        )
         finally:
             if tmp_path is not None:
                 try:

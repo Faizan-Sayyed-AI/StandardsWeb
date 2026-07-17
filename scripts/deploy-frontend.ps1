@@ -64,16 +64,20 @@ $dryRunFlag = @()
 if ($DryRun) { $dryRunFlag = @("--dryrun") }
 
 # --- 2. Upload with explicit MIME types ----------------------------------
-# Everything except js/css first (aws cli guesses most of these correctly),
-# then js/css with forced Content-Type. --delete prunes old hashed bundles.
+# Three passes, EACH carrying --delete so old hashed bundles are actually pruned.
+# aws s3 sync applies --exclude/--include filters to the delete step too, so a
+# pass only prunes the files it considers. Pass 1 (everything except js/css)
+# therefore cannot delete stale js/css; passes 2 and 3 must carry their own
+# --delete to prune old *.js and *.css. js/css are synced separately to force
+# their Content-Type (browsers refuse ES modules served as octet-stream).
 Write-Host "Syncing assets to s3://$BucketName ..." -ForegroundColor Cyan
 aws s3 sync $distDir "s3://$BucketName/" --delete --exclude "*.js" --exclude "*.css" @dryRunFlag
 if ($LASTEXITCODE -ne 0) { throw "s3 sync (general assets) failed" }
 
-aws s3 sync $distDir "s3://$BucketName/" --exclude "*" --include "*.js" --content-type "text/javascript" @dryRunFlag
+aws s3 sync $distDir "s3://$BucketName/" --delete --exclude "*" --include "*.js" --content-type "text/javascript" @dryRunFlag
 if ($LASTEXITCODE -ne 0) { throw "s3 sync (js) failed" }
 
-aws s3 sync $distDir "s3://$BucketName/" --exclude "*" --include "*.css" --content-type "text/css" @dryRunFlag
+aws s3 sync $distDir "s3://$BucketName/" --delete --exclude "*" --include "*.css" --content-type "text/css" @dryRunFlag
 if ($LASTEXITCODE -ne 0) { throw "s3 sync (css) failed" }
 
 # --- 3. Invalidate CloudFront ---------------------------------------------

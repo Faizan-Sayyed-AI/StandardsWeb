@@ -41,11 +41,18 @@ celery.conf.update(
     timezone="UTC",
     enable_utc=True,
 
-    # Ack on receipt (Celery default). Deliberately NOT acks_late: broker
-    # redelivery does not increment task retries, so a task that crashes the
-    # worker (e.g. OOM on a large document) would redeliver and crash it in a
-    # loop forever, and partially-sent notification tasks would re-email
-    # recipients. Failure recovery is handled by each task's self.retry().
+    # Ack on receipt (Celery default). Deliberately NOT acks_late, a considered
+    # tradeoff: broker redelivery does not increment task retries, so with
+    # acks_late a task that hard-crashes the worker (OOM/SIGKILL on a large
+    # document) would redeliver and crash it in an endless loop, and
+    # partially-sent notification tasks would re-email recipients.
+    #
+    # The cost of this choice: a task in flight when the worker is *hard*-killed
+    # (OOM, SIGKILL, segfault — anything that does not raise a catchable Python
+    # exception) is dropped with no redelivery and no retry. Its document stays
+    # in 'pending' tag status until someone re-tags it from the UI; there is no
+    # automatic reaper. Recovery from caught exceptions is still handled by each
+    # task's own self.retry().
     task_acks_late=False,
 
     # Fair dispatch — workers pull one task at a time

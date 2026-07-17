@@ -27,5 +27,10 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  // Test files are excluded from the app's `tsc -b` typecheck: they rely on
+  // vitest globals (describe/test/expect) that are not in `types` above, so
+  // including them here would fail the production build. They still run under
+  // vitest (`npm run test`), which transpiles via esbuild without type-checking.
+  // Trade-off: type errors inside *.test.ts(x) are not caught at build time.
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

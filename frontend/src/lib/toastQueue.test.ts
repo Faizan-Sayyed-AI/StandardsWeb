@@ -35,12 +35,20 @@ describe("pushToast", () => {
     expect(queue[queue.length - 1].description).toBe(`error ${MAX_TOASTS + 2}`);
   });
 
-  test("does not stack a duplicate of an already-visible toast", () => {
-    const first = makeToast();
+  test("does not stack a duplicate error toast (poller spam)", () => {
+    const first = makeToast(); // destructive by default
     const dup = makeToast(); // same title/description/variant, different id
     const queue = pushToast(pushToast([], first), dup);
     expect(queue).toHaveLength(1);
     expect(queue[0].id).toBe(first.id);
+  });
+
+  test("stacks duplicate user-action (non-error) toasts", () => {
+    // Two identical success confirmations from two real actions must both show.
+    const first = makeToast({ variant: "default", title: "Success", description: "Standard deleted" });
+    const second = makeToast({ variant: "default", title: "Success", description: "Standard deleted" });
+    const queue = pushToast(pushToast([], first), second);
+    expect(queue).toHaveLength(2);
   });
 
   test("treats different descriptions as distinct toasts", () => {
