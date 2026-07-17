@@ -1,4 +1,4 @@
-﻿"""
+"""
 Standards read service (M3).
 
 All endpoints are read-only in M3. Write operations (purchase, status change)
@@ -27,7 +27,7 @@ def _stage_matches_sql(stage_filter: str, entity=Standard):
     """
     Build the SQLAlchemy condition for a stage filter.
 
-    A filter ending in ".x" (e.g. "20.x") means "any stage in this phase" â€”
+    A filter ending in ".x" (e.g. "20.x") means "any stage in this phase" —
     matched as a prefix. Anything else is an exact stage_code match. Mirrors
     the frontend's matchesStageFilter() semantics in StandardsPage.tsx.
 
@@ -63,7 +63,7 @@ async def list_standards(
         standards_body: Exact match on standards_body field.
         stage:        Exact stage_code match, or a ".x" phase prefix (e.g. "20.x").
         is_purchased: Filter by purchase flag.
-        sort_by:      Column name â€” one of: iso_reference, title, updated_at, status.
+        sort_by:      Column name — one of: iso_reference, title, updated_at, status.
         sort_order:   'asc' or 'desc'.
 
     Returns:
@@ -117,10 +117,14 @@ async def list_standards(
         "published_date": Standard.published_date,
     }
     sort_col = sort_column_map.get(sort_by, Standard.updated_at)
+    # id tie-break keeps pagination stable when the sort column has ties (e.g.
+    # bulk-imported rows sharing one updated_at) — same reason as the grouped
+    # path. Without it, page membership shifts nondeterministically between
+    # requests, so a row can appear on two pages or none.
     if sort_order == "desc":
-        query = query.order_by(sort_col.desc())
+        query = query.order_by(sort_col.desc(), Standard.id)
     else:
-        query = query.order_by(sort_col.asc())
+        query = query.order_by(sort_col.asc(), Standard.id)
 
     # Apply pagination
     offset = (page - 1) * page_size
@@ -150,10 +154,10 @@ async def get_grouped_standards(
     variants of the same number collapsed into one primary row plus a versions list.
 
     Amendment/corrigendum rows (parent_standard_id IS NOT NULL) never participate in
-    grouping â€” they're excluded entirely, since they already have their own dedicated
+    grouping — they're excluded entirely, since they already have their own dedicated
     UI (the Amendments card on the parent standard's detail page).
 
-    Filters apply only to whether a group's primary matches â€” a kept group's other
+    Filters apply only to whether a group's primary matches — a kept group's other
     versions ride along unfiltered.
 
     Everything happens in SQL: DISTINCT ON picks each group's primary (latest
@@ -162,7 +166,12 @@ async def get_grouped_standards(
     versions. The table is never fully loaded into memory.
     """
     # Rows with no base_reference are each their own singleton group keyed by id.
-    group_key = func.coalesce(Standard.base_reference, cast(Standard.id, String))
+    # nullif(base_reference, '') folds an empty string into the NULL case, so a
+    # blank base_reference (e.g. from a backfill/import) yields a singleton group
+    # instead of collapsing every such row into one shared '' group.
+    group_key = func.coalesce(
+        func.nullif(Standard.base_reference, ""), cast(Standard.id, String)
+    )
     primary_sq = (
         select(Standard)
         .where(Standard.parent_standard_id.is_(None))
@@ -210,6 +219,9 @@ async def get_grouped_standards(
         "iso_reference": primary.iso_reference,
         "title": primary.title,
         "updated_at": primary.updated_at,
+        # Sorting by status orders by the Postgres native-enum declaration order
+        # (not alphabetical). This is intentionally the same as the flat
+        # list_standards path, so grouped and flat views stay consistent.
         "status": primary.status,
         "created_at": primary.created_at,
         "published_date": primary.published_date,
@@ -342,7 +354,7 @@ async def purchase_standard(
     """
     Mark standard as purchased, append standard history row, write audit log.
 
-    Returns (standard, newly_purchased) â€” newly_purchased is False when the
+    Returns (standard, newly_purchased) — newly_purchased is False when the
     standard was already purchased, so callers (the API router) know not to
     re-dispatch a "purchased" notification broadcast on a no-op call.
     """
@@ -355,7 +367,7 @@ async def purchase_standard(
         raise NotFoundError("Standard")
 
     if standard.is_purchased:
-        # Already purchased â€” a double-click or client retry shouldn't
+        # Already purchased — a double-click or client retry shouldn't
         # re-append history or re-broadcast a "purchased" notification to
         # every active user.
         return standard, False
@@ -445,7 +457,7 @@ async def create_standard_manually(
         published_date=payload.published_date,
         external_url=payload.external_url,
         base_reference=_extract_base_reference(payload.iso_reference),
-        # source_feed_id and content_hash stay NULL â€” this standard has no feed origin
+        # source_feed_id and content_hash stay NULL — this standard has no feed origin
     )
     db.add(standard)
     await db.flush()

@@ -106,14 +106,20 @@ async def upload_document(
     Returns 413 if the file exceeds MAX_UPLOAD_SIZE_MB.
     Returns 422 if the file type is not allowed.
     """
-    # Starlette has already spooled the upload to a temp file — pass that
-    # file object through instead of buffering the whole upload in memory
-    # (service-side MIME sniff, sha256, and storage upload all read chunked).
+    # Starlette has already spooled the upload to a temp file — pass that file
+    # object through instead of buffering the whole upload in memory. The service
+    # reads it inside a threadpool (asyncio.to_thread) so the disk I/O never
+    # blocks the event loop. sha256 is fully streamed; storage upload streams on
+    # S3, though the local dev backend still buffers the whole file.
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     upload_stream = file.file
-    upload_stream.seek(0, 2)
-    file_size = upload_stream.tell()
-    upload_stream.seek(0)
+    # Starlette's multipart parser records the spooled size; fall back to a
+    # manual measure only if it is unavailable.
+    file_size = file.size
+    if file_size is None:
+        upload_stream.seek(0, 2)
+        file_size = upload_stream.tell()
+        upload_stream.seek(0)
     if file_size > max_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
