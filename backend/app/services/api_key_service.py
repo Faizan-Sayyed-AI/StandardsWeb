@@ -48,13 +48,19 @@ async def pick_key_with_spare_capacity(
     retired/unhealthy key, so the two paths can't drift apart.
 
     Raises AppValidationError if no active key has room.
-    """
-    counts = await feed_counts_by_key(db)
 
+    Locks the candidate rows (`FOR UPDATE`) so two concurrent callers can't
+    both read the same spare capacity and both assign a feed to it, pushing
+    a key over its declared cap — the second caller blocks until the first
+    transaction commits (or rolls back), then re-reads counts that include
+    whatever the first caller just committed.
+    """
     result = await db.execute(
-        select(ApiKey).where(ApiKey.status == ApiKeyStatus.active)
+        select(ApiKey).where(ApiKey.status == ApiKeyStatus.active).with_for_update()
     )
     candidates = [k for k in result.scalars().all() if k.id != exclude_key_id]
+
+    counts = await feed_counts_by_key(db)
 
     best: ApiKey | None = None
     best_spare = -1

@@ -28,6 +28,14 @@ def setup_logging() -> None:
         level=log_level_int,
     )
 
+    # httpx logs the full request URL (including query params) at INFO —
+    # for the rss2json feed poller that means the api_key query param would
+    # be written to every poll's log line, success or failure. Silence it
+    # regardless of LOG_LEVEL; use structlog's own request-level logging
+    # (which never includes the URL) if that visibility is needed instead.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
     # Shared processors applied regardless of renderer
     shared_processors: list = [
         structlog.contextvars.merge_contextvars,

@@ -537,6 +537,21 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
 # ─────────────────────────────────────────────────────────────────────────────
 # API key health classification
 # ─────────────────────────────────────────────────────────────────────────────
+class RssFetchError(Exception):
+    """
+    An rss2json request failed. The message is always sanitized — it must
+    NEVER include the request URL, because that URL carries the decrypted
+    api_key as a query parameter. httpx's own exception messages (and its
+    request-logging) include the full URL, which would otherwise leak the
+    plaintext key into logs, notifications, email, and the audit log.
+    """
+
+    def __init__(self, status_code: int | None):
+        self.status_code = status_code
+        detail = f"HTTP {status_code}" if status_code else "connection error"
+        super().__init__(f"rss2json request failed ({detail})")
+
+
 def _classify_key_error(exc: Exception) -> ApiKeyStatus | None:
     """
     Map an exception raised while calling rss2json to an API-key health
@@ -544,11 +559,10 @@ def _classify_key_error(exc: Exception) -> ApiKeyStatus | None:
     problem. Returns None for feed-specific errors (bad URL, parse errors,
     etc.) that shouldn't affect the key's status.
     """
-    if isinstance(exc, httpx.HTTPStatusError):
-        code = exc.response.status_code
-        if code == 429:
+    if isinstance(exc, RssFetchError):
+        if exc.status_code == 429:
             return ApiKeyStatus.rate_limited
-        if code in (401, 403):
+        if exc.status_code in (401, 403):
             return ApiKeyStatus.expired
         return None
 
@@ -598,18 +612,28 @@ async def _poll_feed_async(feed_id: str) -> dict:
                 "api_key_status": api_key.status.value,
             }
 
-        # Fetch via rss2json API (bypasses ISO.org Cloudflare Managed Challenge)
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.get(
-                "https://api.rss2json.com/v1/api.json",
-                params={
-                    "rss_url": feed.url,
-                    "api_key": decrypt_secret(api_key.key_value),
-                    "count": 200,
-                },
-            )
-            response.raise_for_status()
-            payload = response.json()
+        # Fetch via rss2json API (bypasses ISO.org Cloudflare Managed Challenge).
+        # Any httpx exception here (network or HTTP-status) carries the full
+        # request URL in its message, including the plaintext api_key query
+        # param — so it's caught and re-raised as a sanitized RssFetchError
+        # immediately, before it can reach any log/notification/audit-log path.
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(
+                    "https://api.rss2json.com/v1/api.json",
+                    params={
+                        "rss_url": feed.url,
+                        "api_key": decrypt_secret(api_key.key_value),
+                        "count": 200,
+                    },
+                )
+        except httpx.HTTPError as exc:
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            raise RssFetchError(status_code) from None
+
+        if response.status_code >= 400:
+            raise RssFetchError(response.status_code)
+        payload = response.json()
 
         if payload.get("status") != "ok":
             raise ValueError(

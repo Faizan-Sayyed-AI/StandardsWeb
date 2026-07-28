@@ -88,8 +88,13 @@ async def update_api_key(
     not found; 409 on label conflict.
     """
     key = await api_key_service.update_api_key(api_key_id, body, db, actor_id=current_user.id)
-    await db.commit()
+    # Read the feed count BEFORE committing — this update never touches
+    # rss_feeds, so the count can't change either way, and running another
+    # query on this session after an explicit mid-handler commit crashes
+    # under the real ASGI/middleware stack (MissingGreenlet), even though it
+    # works fine calling the service functions directly.
     counts = await api_key_service.feed_counts_by_key(db)
+    await db.commit()
     return _to_response(key, counts.get(key.id, 0))
 
 

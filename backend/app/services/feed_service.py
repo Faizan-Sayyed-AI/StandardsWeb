@@ -241,7 +241,14 @@ async def update_feed(
         schedule_changed = True
 
     if payload.api_key_id is not None and payload.api_key_id != feed.api_key_id:
-        target_key = await db.get(ApiKey, payload.api_key_id)
+        # FOR UPDATE so this manual reassignment contends with the same lock
+        # pick_key_with_spare_capacity takes on active keys — otherwise a
+        # concurrent feed-creation/reassignment call could read the same
+        # spare capacity and also assign onto this key, overshooting its cap.
+        result = await db.execute(
+            select(ApiKey).where(ApiKey.id == payload.api_key_id).with_for_update()
+        )
+        target_key = result.scalar_one_or_none()
         if target_key is None:
             raise NotFoundError("ApiKey")
         current_count = (await api_key_service.feed_counts_by_key(db)).get(target_key.id, 0)

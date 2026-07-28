@@ -18,6 +18,17 @@ Beat scheduler: celery_sqlalchemy_scheduler.DatabaseScheduler
 from celery import Celery
 
 from app.config import settings
+from app.core.logging import setup_logging
+
+# worker and beat both use THIS module as their Celery `-A` app entrypoint and
+# never import app.main — without this, setup_logging()'s httpx/httpcore log
+# suppression (see app/core/logging.py) never runs where feed polling actually
+# happens, silently leaking rss2json's plaintext api_key query param into
+# every poll's container logs. Safe to call again if app.main also imports
+# this module in the web process — logging.basicConfig() is a no-op once a
+# root handler already exists, and structlog.configure() just re-applies the
+# same config.
+setup_logging()
 
 # MUST run before Beat's DatabaseScheduler (or any ORM write to the scheduler
 # tables): replaces celery-sqlalchemy-scheduler's SQLAlchemy-1.x-only mapper
