@@ -61,6 +61,21 @@ def _build_search_text(payload: dict) -> str:
 _STATUS_COMPLETED = "completed"
 _STATUS_FAILED = "failed"
 
+# Read timeout for the tagging request scales with file size — larger files
+# take the LLM-backed service longer to process — capped so a request can
+# never hang past 30 minutes.
+_TAGGING_TIMEOUT_BASE_SECONDS = 300
+_TAGGING_TIMEOUT_PER_MB_SECONDS = 30
+_TAGGING_TIMEOUT_MAX_SECONDS = 1800
+
+
+def _compute_tagging_timeout_seconds(file_size_bytes: int) -> float:
+    size_mb = file_size_bytes / (1024 * 1024)
+    return min(
+        _TAGGING_TIMEOUT_MAX_SECONDS,
+        _TAGGING_TIMEOUT_BASE_SECONDS + size_mb * _TAGGING_TIMEOUT_PER_MB_SECONDS,
+    )
+
 
 def _extract_result_from_event(event: dict) -> dict | None:
     """Interpret one job-status object.
@@ -179,11 +194,11 @@ async def _tag_document_async(document_id: str) -> dict:
             else:
                 file_path = storage_ref
 
-            # Generous read timeout: the tagging service is LLM-backed and jobs
-            # have been observed to take ~2 min. The same timeout bounds the gap
-            # between SSE events on the stream below.
+            # Read timeout scales with file size (see _compute_tagging_timeout_seconds);
+            # it also bounds the gap between SSE events on the stream below.
+            timeout_seconds = _compute_tagging_timeout_seconds(doc.file_size_bytes)
             with open(file_path, "rb") as fh:
-                async with httpx.AsyncClient(timeout=httpx.Timeout(300, connect=15)) as client:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds, connect=15)) as client:
                     # 1. Submit the job.
                     submit_resp = await client.post(
                         url,

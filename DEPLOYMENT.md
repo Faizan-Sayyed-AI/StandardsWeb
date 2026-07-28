@@ -304,8 +304,13 @@ CORS_ORIGINS=https://yourdomain.com
 LOG_LEVEL=INFO
 ENVIRONMENT=production
 
-# --- RSS2JSON API Key ---
-RSS2JSON_API_KEY=your_rss2json_api_key_here
+# --- RSS Feed API keys ---
+# Fernet key encrypting api_keys.key_value at rest — generate with:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# The actual rss2json.com API key(s) are managed via POST/PATCH /api-keys,
+# not an env var — see scripts/backfill_api_keys.py to migrate off the old
+# single-key setup, and add further keys once feed count nears 25/key.
+API_KEY_ENCRYPTION_KEY=your_generated_fernet_key_here
 ```
 
 ---
@@ -664,7 +669,7 @@ SMTP_FROM_ADDRESS=noreply@yourdomain.com
 | `CORS_ORIGINS` | Yes | — | Comma-separated allowed origins (your domain) |
 | `LOG_LEVEL` | No | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `ENVIRONMENT` | No | `development` | `development` or `production` |
-| `RSS2JSON_API_KEY` | Yes | — | API key from rss2json.com for RSS polling |
+| `API_KEY_ENCRYPTION_KEY` | Yes | — | Fernet key encrypting stored rss2json.com API keys (see `/api-keys`) |
 | `RATE_LIMIT_AUTH` | No | `60/minute` | Rate limit for auth endpoints |
 | `RATE_LIMIT_DEFAULT` | No | `300/minute` | Rate limit for general API endpoints |
 

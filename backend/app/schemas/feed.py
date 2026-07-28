@@ -47,6 +47,9 @@ class FeedUpdate(BaseModel):
     schedule_hour: int | None = Field(default=None, ge=0, le=23)
     schedule_day_of_week: int | None = Field(default=None, ge=0, le=6)
     is_enabled: bool | None = None
+    api_key_id: uuid.UUID | None = Field(
+        default=None, description="Manually move this feed to a different API key (must have spare capacity)"
+    )
 
 
 class FeedResponse(BaseModel):
@@ -62,6 +65,7 @@ class FeedResponse(BaseModel):
     last_poll_status: PollStatus
     failure_count: int
     created_by: uuid.UUID | None
+    api_key_id: uuid.UUID | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

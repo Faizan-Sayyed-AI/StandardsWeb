@@ -39,6 +39,7 @@ dependencies = [
     # Security
     "passlib[bcrypt]==1.7.*",
     "python-jose[cryptography]==3.3.*",
+    "cryptography==46.*",
 
     # File handling
     "python-multipart==0.0.*",   # multipart/form-data upload support

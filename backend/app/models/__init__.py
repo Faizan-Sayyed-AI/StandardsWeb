@@ -1,5 +1,6 @@
 """ORM models package — import all models here so Alembic sees the full metadata."""
 
+from app.models.api_key import ApiKey
 from app.models.audit_log import AuditLog
 from app.models.celery_schedule import CelerySchedule
 from app.models.distribution_list import DistributionList, DistributionListMember
@@ -16,6 +17,7 @@ from app.models.system_config import SystemConfig
 from app.models.user import User
 
 __all__ = [
+    "ApiKey",
     "AuditLog",
     "CelerySchedule",
     "DistributionList",

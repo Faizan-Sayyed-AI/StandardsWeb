@@ -11,6 +11,7 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_DEFAULT_SECRET_KEY = "dev-secret-change-me-in-production-use-32-random-bytes"
+_INSECURE_DEFAULT_API_KEY_ENCRYPTION_KEY = "cGdh0W0zLiiPteRJHYaymhXCJ9Vco-Bq9T1ZjeIKChM="
 
 
 class Settings(BaseSettings):
@@ -20,7 +21,13 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=True,
     )
-    RSS2JSON_API_KEY: str = ""
+    # ── RSS Feed API keys ─────────────────────────────────
+    # Fernet key used to encrypt/decrypt api_keys.key_value at rest.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # Keep this separate from SECRET_KEY — rotating the JWT secret must not
+    # strand already-encrypted API key values.
+    API_KEY_ENCRYPTION_KEY: str = _INSECURE_DEFAULT_API_KEY_ENCRYPTION_KEY
+
     # ── Database ──────────────────────────────────────────
     # Async URL used by FastAPI / SQLAlchemy (asyncpg driver)
     DATABASE_URL: str = "postgresql+asyncpg://ists:ists_dev_password@localhost:5432/ists"
@@ -90,6 +97,12 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SECRET_KEY is still the insecure default value. "
                 "Set a real random SECRET_KEY env var before running with "
+                f"ENVIRONMENT={self.ENVIRONMENT!r}."
+            )
+        if not self.is_development and self.API_KEY_ENCRYPTION_KEY == _INSECURE_DEFAULT_API_KEY_ENCRYPTION_KEY:
+            raise ValueError(
+                "API_KEY_ENCRYPTION_KEY is still the insecure default value. "
+                "Set a real random Fernet key env var before running with "
                 f"ENVIRONMENT={self.ENVIRONMENT!r}."
             )
         return self

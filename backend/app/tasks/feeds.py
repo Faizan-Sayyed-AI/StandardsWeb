@@ -19,14 +19,17 @@ import asyncio
 import hashlib
 import re
 import time
+import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
 import httpx
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 
 from app.celery_app import celery
+from app.core.crypto import decrypt_secret
+from app.models.api_key import ApiKey, ApiKeyStatus
 from app.models.rss_feed import PollStatus, RssFeed
 from app.models.standard import Standard, StandardStatus
 from app.models.standard_history import EventSource, EventType, StandardHistory
@@ -532,12 +535,38 @@ async def _process_entry(entry: Any, feed: RssFeed, session: Any) -> tuple[str, 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# API key health classification
+# ─────────────────────────────────────────────────────────────────────────────
+def _classify_key_error(exc: Exception) -> ApiKeyStatus | None:
+    """
+    Map an exception raised while calling rss2json to an API-key health
+    transition, if the failure indicates the *key* (not the feed) is the
+    problem. Returns None for feed-specific errors (bad URL, parse errors,
+    etc.) that shouldn't affect the key's status.
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code == 429:
+            return ApiKeyStatus.rate_limited
+        if code in (401, 403):
+            return ApiKeyStatus.expired
+        return None
+
+    msg = str(exc).lower()
+    if any(kw in msg for kw in ("exceed", "rate limit", "too many requests", "quota")):
+        return ApiKeyStatus.rate_limited
+    if any(kw in msg for kw in ("not valid", "invalid api key", "invalid key")):
+        return ApiKeyStatus.expired
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Async core implementations
 # ─────────────────────────────────────────────────────────────────────────────
 async def _poll_feed_async(feed_id: str) -> dict:
     """Full async implementation of the poll_feed business logic."""
     from app.database import async_session_factory
-    from app.config import settings
+    from app.services.api_key_service import record_key_success
 
     async with async_session_factory() as session:
         result = await session.execute(
@@ -553,13 +582,29 @@ async def _poll_feed_async(feed_id: str) -> dict:
             log.info("poll_feed_disabled", feed_id=feed_id)
             return {"status": "skipped", "reason": "feed_disabled", "feed_id": feed_id}
 
+        api_key = await session.get(ApiKey, feed.api_key_id) if feed.api_key_id else None
+        if api_key is None:
+            log.error("poll_feed_no_api_key", feed_id=feed_id)
+            return {"status": "skipped", "reason": "no_api_key_assigned", "feed_id": feed_id}
+        if api_key.status != ApiKeyStatus.active:
+            log.warning(
+                "poll_feed_api_key_unavailable", feed_id=feed_id,
+                api_key_id=str(api_key.id), api_key_status=api_key.status.value,
+            )
+            return {
+                "status": "skipped",
+                "reason": "api_key_unavailable",
+                "feed_id": feed_id,
+                "api_key_status": api_key.status.value,
+            }
+
         # Fetch via rss2json API (bypasses ISO.org Cloudflare Managed Challenge)
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.get(
                 "https://api.rss2json.com/v1/api.json",
                 params={
                     "rss_url": feed.url,
-                    "api_key": settings.RSS2JSON_API_KEY,
+                    "api_key": decrypt_secret(api_key.key_value),
                     "count": 200,
                 },
             )
@@ -571,6 +616,10 @@ async def _poll_feed_async(feed_id: str) -> dict:
                 f"rss2json returned non-ok status for '{feed.url}': "
                 f"{payload.get('message', 'unknown error')}"
             )
+
+        # A successful call proves the key is healthy — reset its failure
+        # streak and self-heal it out of rate_limited if it was there.
+        await record_key_success(api_key.id, session)
 
         raw_items = payload.get("items", [])
 
@@ -688,6 +737,83 @@ async def _update_feed_on_failure(
         )
 
 
+async def _update_api_key_on_failure(feed_id: str, exc: Exception) -> None:
+    """
+    If `exc` indicates the feed's assigned API key (not the feed itself) is
+    the problem, mark that key's health in its own session/transaction and
+    alert admins on a fresh transition into rate_limited/expired.
+    """
+    key_status = _classify_key_error(exc)
+    if key_status is None:
+        return
+
+    from app.database import async_session_factory
+    from app.services.api_key_service import record_key_failure
+
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(RssFeed.api_key_id).where(RssFeed.id == feed_id)
+        )
+        row = result.first()
+        if row is None or row[0] is None:
+            return
+        api_key_id = row[0]
+
+        status_changed = await record_key_failure(api_key_id, session, new_status=key_status)
+        await session.commit()
+
+    if status_changed:
+        log.error(
+            "api_key_status_changed",
+            api_key_id=str(api_key_id),
+            new_status=key_status.value,
+            triggering_feed_id=feed_id,
+        )
+        try:
+            await _notify_api_key_status_change_async(api_key_id, key_status, str(exc))
+        except Exception as notify_exc:
+            log.exception(
+                "failed_to_send_api_key_status_notification",
+                error=str(notify_exc),
+            )
+
+
+async def _notify_api_key_status_change_async(
+    api_key_id: uuid.UUID, new_status: ApiKeyStatus, error_msg: str
+) -> None:
+    """Create an in-app critical notification for admins when a key goes unhealthy."""
+    from app.database import async_session_factory
+    from app.models.notification import Notification, NotificationSeverity
+    from app.models.user import User, UserRole
+
+    async with async_session_factory() as db:
+        key = await db.get(ApiKey, api_key_id)
+        if key is None:
+            return
+
+        title = f"API Key Unhealthy: {key.label}"
+        body = (
+            f"API key '{key.label}' transitioned to '{new_status.value}' and will "
+            f"no longer be used for polling until fixed.\nError: {error_msg}\n"
+            f"Reassign its feeds or update the key at /api-keys/{api_key_id}."
+        )
+
+        res = await db.execute(
+            select(User).where(User.is_active == True, User.role == UserRole.admin)
+        )
+        for admin in res.scalars().all():
+            db.add(Notification(
+                user_id=admin.id,
+                event_type="status_change",
+                severity=NotificationSeverity.critical,
+                title=title,
+                body=body,
+                is_read=False,
+            ))
+
+        await db.commit()
+
+
 async def _notify_feed_failure_async(feed_id: str, error_msg: str) -> None:
     """Create critical in-app notification for admins + send email to mapped lists."""
     import uuid
@@ -789,15 +915,32 @@ async def _poll_all_feeds_async() -> dict:
 
     async with async_session_factory() as session:
         result = await session.execute(
-            select(RssFeed.id).where(RssFeed.is_enabled == True)
+            select(RssFeed.id)
+            .join(ApiKey, ApiKey.id == RssFeed.api_key_id)
+            .where(RssFeed.is_enabled == True, ApiKey.status == ApiKeyStatus.active)
         )
         feed_ids = [str(row[0]) for row in result.all()]
+
+        skipped_result = await session.execute(
+            select(func.count(RssFeed.id))
+            .outerjoin(ApiKey, ApiKey.id == RssFeed.api_key_id)
+            .where(
+                RssFeed.is_enabled == True,
+                or_(ApiKey.status != ApiKeyStatus.active, RssFeed.api_key_id.is_(None)),
+            )
+        )
+        skipped_count = skipped_result.scalar_one()
 
     for fid in feed_ids:
         poll_feed.delay(fid)
 
+    if skipped_count:
+        log.warning(
+            "poll_all_feeds_skipped_unhealthy_key",
+            skipped_count=skipped_count,
+        )
     log.info("poll_all_feeds_dispatched", count=len(feed_ids))
-    return {"status": "dispatched", "feed_count": len(feed_ids)}
+    return {"status": "dispatched", "feed_count": len(feed_ids), "skipped_unhealthy_key": skipped_count}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -828,6 +971,7 @@ def poll_feed(self, feed_id: str) -> dict:
                 is_final=is_final,
             )
         )
+        asyncio.run(_update_api_key_on_failure(feed_id, exc))
 
         if is_final:
             log.error(

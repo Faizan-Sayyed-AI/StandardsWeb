@@ -14,6 +14,7 @@ Schema (PRD §6.2):
   last_poll_status      ENUM(pending|ok|failed) DEFAULT pending
   failure_count         SMALLINT    DEFAULT 0
   created_by            UUID        FK users.id
+  api_key_id            UUID        FK api_keys.id NULLABLE
   created_at            TIMESTAMPTZ DEFAULT now()
 """
 
@@ -69,6 +70,16 @@ class RssFeed(AsyncBase):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    # Nullable at the DB level for existing rows created before this column
+    # existed (see scripts/backfill_api_keys.py) — application code always
+    # assigns one on create. RESTRICT so an api_keys row with feeds still
+    # attached can't be deleted out from under them; see api_key_service.
+    api_key_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("api_keys.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

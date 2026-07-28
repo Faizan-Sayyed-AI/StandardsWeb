@@ -8,7 +8,7 @@ are added here in their respective milestones (M2–M6).
 
 from fastapi import APIRouter
 
-from app.api.v1 import admin, auth, dashboard, documents, distribution_lists, feeds, notifications, standards, users
+from app.api.v1 import admin, api_keys, auth, dashboard, documents, distribution_lists, feeds, notifications, standards, users
 
 router = APIRouter(prefix="/api/v1")
 
@@ -18,6 +18,7 @@ router.include_router(users.router)
 
 # ── M2: Feed Engine ───────────────────────────────────────────────────────────
 router.include_router(feeds.router)
+router.include_router(api_keys.router)
 
 # ── M3: Core UI API endpoints ─────────────────────────────────────────────────
 router.include_router(standards.router)

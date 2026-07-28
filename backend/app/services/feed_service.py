@@ -15,11 +15,12 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import AppValidationError, ConflictError, NotFoundError
+from app.models.api_key import ApiKey
 from app.models.celery_schedule import CelerySchedule
 from app.models.rss_feed import RssFeed, ScheduleType
 from app.schemas.feed import FeedCreate, FeedUpdate
-from app.services import celery_beat_sync
+from app.services import api_key_service, celery_beat_sync
 from app.services.audit_service import write_audit_log
 
 log = structlog.get_logger(__name__)
@@ -146,6 +147,10 @@ async def create_feed(
     if existing.scalar_one_or_none() is not None:
         raise ConflictError(f"A feed with URL '{payload.url}' already exists")
 
+    # Least-loaded active key with spare capacity — raises AppValidationError
+    # if every key is full (see api_key_service.pick_key_with_spare_capacity).
+    assigned_key = await api_key_service.pick_key_with_spare_capacity(db)
+
     feed = RssFeed(
         name=payload.name,
         url=payload.url,
@@ -155,6 +160,7 @@ async def create_feed(
         schedule_day_of_week=payload.schedule_day_of_week,
         is_enabled=payload.is_enabled,
         created_by=actor_id,
+        api_key_id=assigned_key.id,
     )
     db.add(feed)
     await db.flush()  # assign UUID before creating schedule row
@@ -233,6 +239,19 @@ async def update_feed(
         changes["is_enabled"] = {"from": feed.is_enabled, "to": payload.is_enabled}
         feed.is_enabled = payload.is_enabled
         schedule_changed = True
+
+    if payload.api_key_id is not None and payload.api_key_id != feed.api_key_id:
+        target_key = await db.get(ApiKey, payload.api_key_id)
+        if target_key is None:
+            raise NotFoundError("ApiKey")
+        current_count = (await api_key_service.feed_counts_by_key(db)).get(target_key.id, 0)
+        if current_count >= target_key.capacity:
+            raise AppValidationError(
+                f"API key '{target_key.label}' is already at capacity "
+                f"({current_count}/{target_key.capacity})"
+            )
+        changes["api_key_id"] = {"from": str(feed.api_key_id), "to": str(payload.api_key_id)}
+        feed.api_key_id = payload.api_key_id
 
     if changes:
         await db.flush()
