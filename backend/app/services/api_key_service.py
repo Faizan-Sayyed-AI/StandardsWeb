@@ -161,6 +161,13 @@ async def update_api_key(
 
     if changes:
         await db.flush()
+        # updated_at uses onupdate=func.now(), so the flush leaves it expired —
+        # SQLAlchemy can't know the server-computed value. Refresh it here,
+        # inside the awaited (greenlet) context; otherwise the first read of
+        # key.updated_at happens as a plain sync attribute access in the
+        # router's response builder and raises MissingGreenlet. Same reason
+        # user_service.update_user refreshes after its flush.
+        await db.refresh(key)
         await write_audit_log(
             db,
             action="api_key.updated",
