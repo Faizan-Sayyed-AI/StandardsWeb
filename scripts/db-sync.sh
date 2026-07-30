@@ -113,12 +113,39 @@ do_restore() {
   docker exec -i "$LOCAL_CONTAINER" psql -U "$LOCAL_DB_USER" -d postgres -v ON_ERROR_STOP=1 \
     -c "DROP DATABASE IF EXISTS $LOCAL_DB;" -c "CREATE DATABASE $LOCAL_DB OWNER $LOCAL_DB_USER;" >/dev/null
 
-  info "Restoring dump (this can take a while)"
-  # --no-owner/--no-privileges: the dump may reference roles that don't exist
-  # locally. Warnings on extensions/comments are normal and non-fatal, so we
-  # don't use --exit-on-error here; the verification step below is the real check.
-  docker exec -i "$LOCAL_CONTAINER" pg_restore -U "$LOCAL_DB_USER" -d "$LOCAL_DB" \
-    --no-owner --no-privileges < "$file" || info "pg_restore reported warnings (usually harmless — verifying below)"
+  # Dump format is detected from the file itself rather than the extension:
+  # pg_dump -Fc (custom) starts with the magic bytes "PGDMP" and needs
+  # pg_restore; plain-SQL dumps are fed to psql instead.
+  local fmt
+  if [ "$(head -c 5 "$file")" = "PGDMP" ]; then
+    fmt=custom
+  elif gzip -t "$file" 2>/dev/null; then
+    fmt=gzip
+  else
+    fmt=plain
+  fi
+  info "Restoring dump (format: $fmt) — this can take a while"
+
+  case "$fmt" in
+    custom)
+      # --no-owner/--no-privileges: the dump may reference roles that don't
+      # exist locally. Extension/comment warnings are normal and non-fatal, so
+      # no --exit-on-error; the verification step below is the real check.
+      docker exec -i "$LOCAL_CONTAINER" pg_restore -U "$LOCAL_DB_USER" -d "$LOCAL_DB" \
+        --no-owner --no-privileges < "$file" \
+        || info "pg_restore reported warnings (usually harmless — verifying below)"
+      ;;
+    gzip)
+      gunzip -c "$file" | docker exec -i "$LOCAL_CONTAINER" \
+        psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB" -v ON_ERROR_STOP=1 -q \
+        || die "psql restore failed"
+      ;;
+    plain)
+      docker exec -i "$LOCAL_CONTAINER" \
+        psql -U "$LOCAL_DB_USER" -d "$LOCAL_DB" -v ON_ERROR_STOP=1 -q < "$file" \
+        || die "psql restore failed"
+      ;;
+  esac
 
   info "Restarting app containers"
   docker compose start web worker beat >/dev/null

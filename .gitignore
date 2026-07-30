@@ -73,5 +73,6 @@ logs/
 # Database dumps pulled from the server (contain real user data — never commit)
 backups/
 *.dump
+*.sql
 *.sql.gz
 scripts/.env.dbsync
