@@ -69,3 +69,9 @@ backend/alembic/versions/__pycache__/
 # Logs
 *.log
 logs/
+
+# Database dumps pulled from the server (contain real user data — never commit)
+backups/
+*.dump
+*.sql.gz
+scripts/.env.dbsync
