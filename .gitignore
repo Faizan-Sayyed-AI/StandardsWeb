@@ -76,3 +76,8 @@ backups/
 *.sql
 *.sql.gz
 scripts/.env.dbsync
+
+# Source standard documents staged for bulk upload. Hundreds of MB of licensed
+# PDFs — belongs on disk / in object storage, never in git. Anchored to the repo
+# root so it does not also match backend/storage/standards/.
+/Standards/
