@@ -1112,18 +1112,26 @@ export function StandardDetailPage() {
                   </span>
                 ) : (
                   (isAdmin || isManager) && (
-                    <Button
-                      size="sm"
-                      onClick={handlePurchase}
-                      disabled={purchaseMutation.isPending}
-                      className="h-7 px-3 bg-teal-600 hover:bg-teal-700 text-xs gap-1"
-                    >
-                      {purchaseMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        "Mark as Purchased"
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        size="sm"
+                        onClick={handlePurchase}
+                        disabled={purchaseMutation.isPending || !standard.can_purchase}
+                        title={standard.purchase_blocked_reason ?? undefined}
+                        className="h-7 px-3 bg-teal-600 hover:bg-teal-700 text-xs gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {purchaseMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          "Mark as Purchased"
+                        )}
+                      </Button>
+                      {standard.purchase_blocked_reason && (
+                        <p className="text-[11px] text-muted-foreground max-w-xs leading-snug">
+                          {standard.purchase_blocked_reason}
+                        </p>
                       )}
-                    </Button>
+                    </div>
                   )
                 )}
               </div>

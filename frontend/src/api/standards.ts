@@ -22,6 +22,13 @@ export interface Standard {
   parent_standard_id: string | null;
   updated_at: string;
   created_at: string;
+  // Derived server-side (standard_service.get_purchasability) — the UI holds
+  // no ISO stage logic of its own.
+  is_draft: boolean;
+  document_count: number;
+  can_upload: boolean;
+  can_purchase: boolean;
+  purchase_blocked_reason: string | null;
 }
 
 export interface StandardDetail extends Standard {
