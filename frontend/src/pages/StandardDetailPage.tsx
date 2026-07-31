@@ -733,9 +733,11 @@ function flattenTagCategories(rawResponse: Record<string, unknown> | null): stri
 
 interface DocumentsTabProps {
   standardId: string;
+  canUpload: boolean;
+  blockedReason: string | null;
 }
 
-function DocumentsTab({ standardId }: DocumentsTabProps) {
+function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason }: DocumentsTabProps) {
   const { isAdmin, isManager } = useAuth();
   const queryClient = useQueryClient();
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -750,6 +752,9 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
     mutationFn: (docId: string) => deleteDocument(docId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents", standardId] });
+      // can_purchase lives on the standard query — removing the last document
+      // must re-disable the purchase button.
+      queryClient.invalidateQueries({ queryKey: ["standard", standardId] });
       setDeletingId(null);
     },
   });
@@ -795,15 +800,22 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
     <div className="pt-4 space-y-4">
       {/* Upload button (manager+) */}
       {canUpload && (
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end gap-1">
           <Button
             size="sm"
             onClick={() => setShowUploadModal(true)}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 transition-all"
+            disabled={!stageAllowsUpload}
+            title={!stageAllowsUpload ? (blockedReason ?? undefined) : undefined}
+            className="gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Upload className="h-3.5 w-3.5" />
             Upload Document
           </Button>
+          {!stageAllowsUpload && blockedReason && (
+            <p className="text-[11px] text-muted-foreground max-w-xs text-right leading-snug">
+              {blockedReason}
+            </p>
+          )}
         </div>
       )}
 
@@ -991,9 +1003,12 @@ function DocumentsTab({ standardId }: DocumentsTabProps) {
         <UploadModal
           standardId={standardId}
           onClose={() => setShowUploadModal(false)}
-          onSuccess={() =>
-            queryClient.invalidateQueries({ queryKey: ["documents", standardId] })
-          }
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["documents", standardId] });
+            // can_purchase lives on the standard query; without this the
+            // purchase button stays disabled until a manual refresh.
+            queryClient.invalidateQueries({ queryKey: ["standard", standardId] });
+          }}
         />
       )}
     </div>
@@ -1298,7 +1313,11 @@ export function StandardDetailPage() {
 
             {/* Documents tab */}
             <TabsContent value="documents">
-              <DocumentsTab standardId={id!} />
+              <DocumentsTab
+                standardId={id!}
+                canUpload={standard.can_upload}
+                blockedReason={standard.purchase_blocked_reason}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
