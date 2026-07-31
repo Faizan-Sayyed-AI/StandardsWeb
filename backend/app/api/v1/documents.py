@@ -18,11 +18,12 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 from app.api.deps import AdminUser, CurrentUser, DBSession, ManagerOrAdminUser
 from app.config import settings
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import AppValidationError, NotFoundError
+from app.core.iso_stages import is_draft_stage
 from app.models.document import Document
 from app.schemas.document import DocumentDownloadResponse, DocumentResponse, DocumentTagResponse
 from app.schemas.pagination import Page
-from app.services import document_tag_service, document_service
+from app.services import document_tag_service, document_service, standard_service
 
 router = APIRouter(tags=["Documents"])
 
@@ -104,8 +105,15 @@ async def upload_document(
     Returns 404 if the standard does not exist.
     Returns 409 if an identical file already exists for this standard.
     Returns 413 if the file exceeds MAX_UPLOAD_SIZE_MB.
-    Returns 422 if the file type is not allowed.
+    Returns 422 if the file type is not allowed, or the standard is a draft.
     """
+    # Reject drafts before touching the upload stream or storage. get_standard
+    # raises NotFoundError (404) for a missing standard, preserving this
+    # endpoint's documented 404 behaviour.
+    standard = await standard_service.get_standard(standard_id, db)
+    if is_draft_stage(standard.stage_code):
+        raise AppValidationError(standard_service.draft_blocked_reason(standard))
+
     # Starlette has already spooled the upload to a temp file — pass that file
     # object through instead of buffering the whole upload in memory. The service
     # reads it inside a threadpool (asyncio.to_thread) so the disk I/O never

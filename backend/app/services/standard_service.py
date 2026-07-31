@@ -13,7 +13,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import AppValidationError, ConflictError, NotFoundError
 from app.core.iso_stages import is_draft_stage
 from app.models.document import Document
 from app.models.document_tag import DocumentTag
@@ -317,6 +317,16 @@ def _stage_label(standard: Standard) -> str:
     ) or "pre-publication"
 
 
+def draft_blocked_reason(standard: Standard) -> str:
+    """
+    The user-facing reason a draft standard cannot be uploaded to or purchased.
+
+    Shared by the purchase guard, the upload guard, and get_purchasability so
+    the three can never disagree on the wording.
+    """
+    return DRAFT_BLOCKED_REASON.format(stage=_stage_label(standard))
+
+
 async def get_purchasability(standard: Standard, db: AsyncSession) -> dict:
     """
     Derive upload/purchase availability for a standard.
@@ -341,7 +351,7 @@ async def get_purchasability(standard: Standard, db: AsyncSession) -> dict:
 
     reason: str | None = None
     if draft:
-        reason = DRAFT_BLOCKED_REASON.format(stage=_stage_label(standard))
+        reason = draft_blocked_reason(standard)
     elif document_count == 0 and not standard.is_purchased:
         reason = NO_DOCUMENT_BLOCKED_REASON
 
@@ -425,6 +435,20 @@ async def purchase_standard(
         # re-append history or re-broadcast a "purchased" notification to
         # every active user.
         return standard, False
+
+    # Order matters: the already-purchased no-op above stays first, so a
+    # repeat call remains idempotent rather than turning into a 422.
+    if is_draft_stage(standard.stage_code):
+        raise AppValidationError(draft_blocked_reason(standard))
+
+    doc_count = await db.execute(
+        select(func.count(Document.id)).where(
+            Document.standard_id == standard.id,
+            Document.is_current == True,  # noqa: E712
+        )
+    )
+    if doc_count.scalar_one() == 0:
+        raise AppValidationError(NO_DOCUMENT_BLOCKED_REASON)
 
     old_snapshot = {
         "is_purchased": standard.is_purchased,
