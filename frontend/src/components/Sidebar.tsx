@@ -61,11 +61,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   });
 
   return (
-    <aside id="leftWrapper"
-      className={cn(
-        "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/8 bg-slate-950/80 backdrop-blur-xl transition-all duration-300 ease-in-out",
-        collapsed ? "w-[60px]" : "w-60"
-      )}
+    <aside
+      id="leftWrapper"
+      style={{ width: collapsed ? "3.5%" : "13.5%" }}
+      className="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/8 bg-slate-950/80 backdrop-blur-xl transition-all duration-300 ease-in-out"
     >
       {/* Logo row + collapse toggle */}
       <div className="relative flex h-16 shrink-0 items-center border-b border-white/8 px-3">
@@ -84,6 +83,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Collapse / expand button — sits on the right edge */}
         <button
           onClick={onToggle}
+
           className="absolute -right-3 top-1/2 -translate-y-1/2 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-slate-900 text-muted-foreground shadow-sm transition-colors hover:border-white/30 hover:text-foreground"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
