@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, ChevronDown, ChevronRight, ChevronUp, Loader2, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import {
@@ -59,17 +59,53 @@ const DEFAULT_CREATE_FORM: StandardCreatePayload = {
 
 export function StandardsPage() {
   const navigate = useNavigate();
-  const [params, setParams] = useState<StandardsListParams>({
-    page: 1,
-    page_size: 25,
-    sort_by: "published_date",
-    sort_order: "desc",
-  });
-  const [search, setSearch] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [committeeFilter, setCommitteeFilter] = useState("");
-  const [stageFilter, setStageFilter] = useState("");
-  const [standardsBodyFilter, setStandardsBodyFilter] = useState("");
+  // Filters, sort and pagination live in the URL query string rather than
+  // component state, so they survive navigating into a standard's detail page
+  // and back (this component unmounts on navigation, which previously reset
+  // every filter). It also makes a filtered view shareable and bookmarkable.
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const qp = (key: string, fallback = "") => searchParams.get(key) ?? fallback;
+
+  const params: StandardsListParams = {
+    page: Number(qp("page", "1")) || 1,
+    page_size: Number(qp("page_size", "25")) || 25,
+    sort_by: qp("sort_by", "published_date"),
+    sort_order: qp("sort_order", "desc") === "asc" ? "asc" : "desc",
+    status: qp("status") || undefined,
+    is_purchased: searchParams.has("purchased")
+      ? searchParams.get("purchased") === "true"
+      : undefined,
+  };
+  const search = qp("q");
+  const showFilters = qp("filters") === "1";
+  const committeeFilter = qp("committee");
+  const stageFilter = qp("stage");
+  const standardsBodyFilter = qp("body");
+
+  /**
+   * Merge updates into the query string. An empty string or undefined removes
+   * the key, keeping the URL tidy. Any change resets to page 1 unless the
+   * update sets `page` itself. replace:true so typing in the search box does
+   * not push a history entry per keystroke.
+   */
+  const setQp = (
+    updates: Record<string, string | number | boolean | undefined>,
+    resetPage = true,
+  ) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (resetPage && updates.page === undefined) next.set("page", "1");
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === undefined || value === "") next.delete(key);
+          else next.set(key, String(value));
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const { isAdmin, isManager } = useAuth();
@@ -134,13 +170,15 @@ export function StandardsPage() {
   });
 
   const updateSort = (sortBy: string) => {
-    setParams((p) => ({
-      ...p,
+    setQp({
       sort_by: sortBy,
       sort_order:
-        p.sort_by === sortBy ? (p.sort_order === "asc" ? "desc" : "asc") : "desc",
-      page: 1,
-    }));
+        params.sort_by === sortBy
+          ? params.sort_order === "asc"
+            ? "desc"
+            : "asc"
+          : "desc",
+    });
   };
 
   const SortIcon = ({ col }: { col: string }) => {
@@ -194,14 +232,13 @@ export function StandardsPage() {
               placeholder="Search ISO reference, title, committee…"
               value={search}
               onChange={(e) => {
-                setSearch(e.target.value);
-                setParams((p) => ({ ...p, page: 1 }));
+                setQp({ q: e.target.value });
               }}
               className="pl-9"
             />
             {search && (
               <button
-                onClick={() => setSearch("")}
+                onClick={() => setQp({ q: undefined })}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
@@ -213,7 +250,7 @@ export function StandardsPage() {
           <Button
             variant={showFilters ? "default" : "outline"}
             size="sm"
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => setQp({ filters: showFilters ? undefined : "1" }, false)}
             className="gap-2"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -232,7 +269,7 @@ export function StandardsPage() {
                   <button
                     key={s}
                     onClick={() =>
-                      setParams((p) => ({ ...p, status: s || undefined, page: 1 }))
+                      setQp({ status: s || undefined })
                     }
                     className={filterPill(params.status === (s || undefined))}
                   >
@@ -251,8 +288,7 @@ export function StandardsPage() {
                   <select
                     value={committeeFilter}
                     onChange={(e) => {
-                      setCommitteeFilter(e.target.value);
-                      setParams((p) => ({ ...p, page: 1 }));
+                      setQp({ committee: e.target.value });
                     }}
                     className="appearance-none min-w-[180px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
@@ -272,8 +308,7 @@ export function StandardsPage() {
                   <select
                     value={standardsBodyFilter}
                     onChange={(e) => {
-                      setStandardsBodyFilter(e.target.value);
-                      setParams((p) => ({ ...p, page: 1 }));
+                      setQp({ body: e.target.value });
                     }}
                     className="appearance-none min-w-[140px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
@@ -293,8 +328,7 @@ export function StandardsPage() {
                   <select
                     value={stageFilter}
                     onChange={(e) => {
-                      setStageFilter(e.target.value);
-                      setParams((p) => ({ ...p, page: 1 }));
+                      setQp({ stage: e.target.value });
                     }}
                     className="appearance-none min-w-[200px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
@@ -318,7 +352,7 @@ export function StandardsPage() {
                     <button
                       key={label}
                       onClick={() =>
-                        setParams((p) => ({ ...p, is_purchased: val, page: 1 }))
+                        setQp({ purchased: val })
                       }
                       className={filterPill(params.is_purchased === val)}
                     >
@@ -564,7 +598,7 @@ export function StandardsPage() {
                 variant="outline"
                 size="sm"
                 disabled={(params.page ?? 1) <= 1}
-                onClick={() => setParams((p) => ({ ...p, page: (p.page ?? 1) - 1 }))}
+                onClick={() => setQp({ page: (params.page ?? 1) - 1 }, false)}
               >
                 Previous
               </Button>
@@ -572,7 +606,7 @@ export function StandardsPage() {
                 variant="outline"
                 size="sm"
                 disabled={(params.page ?? 1) >= totalPages}
-                onClick={() => setParams((p) => ({ ...p, page: (p.page ?? 1) + 1 }))}
+                onClick={() => setQp({ page: (params.page ?? 1) + 1 }, false)}
               >
                 Next
               </Button>

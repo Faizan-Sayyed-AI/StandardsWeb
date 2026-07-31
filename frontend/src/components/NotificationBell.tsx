@@ -1,5 +1,5 @@
 import { Bell, CheckCheck, LogOut, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getUnreadCount, listNotifications, markAllRead } from "@/api/notifications";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,8 +8,39 @@ import { cn, timeAgo } from "@/lib/utils";
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Close on any click/tap outside the bell, and on Escape.
+  //
+  // This replaces a `fixed inset-0` backdrop div, which could not work
+  // reliably: the bell lives inside the header, and the header is
+  // `sticky z-30` — a stacking context. The backdrop's z-40 was therefore
+  // confined *within* that z-30 layer, so the sidebar (z-40 at the root
+  // level) painted above it and swallowed clicks. A document-level listener
+  // is immune to stacking order. touchstart is included so a tap outside
+  // closes it on touch devices.
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (target && !containerRef.current?.contains(target)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   const { data: count } = useQuery({
     queryKey: ["notifications", "count"],
@@ -42,7 +73,7 @@ export function NotificationBell() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen(!open)}
         className={cn(
@@ -62,9 +93,8 @@ export function NotificationBell() {
 
       {open && (
         <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          {/* Panel */}
+          {/* Panel — dismissal is handled by the outside-click effect above,
+              not a backdrop element (see the comment there for why). */}
           <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-border bg-popover/95 backdrop-blur-xl shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
