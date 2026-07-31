@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.iso_stages import is_draft_stage
 from app.models.document import Document
 from app.models.document_tag import DocumentTag
 from app.models.standard import Standard, StandardStatus
@@ -298,6 +299,59 @@ async def get_standard(standard_id: uuid.UUID, db: AsyncSession) -> Standard:
     if standard is None:
         raise NotFoundError("Standard")
     return standard
+
+
+DRAFT_BLOCKED_REASON = (
+    "Not available — standard is still at draft stage ({stage}). "
+    "Available once published."
+)
+NO_DOCUMENT_BLOCKED_REASON = (
+    "Upload the standard document before marking it as purchased."
+)
+
+
+def _stage_label(standard: Standard) -> str:
+    """Human-readable stage for a blocked-reason message."""
+    return " ".join(
+        p for p in (standard.stage_code, standard.stage_name) if p
+    ) or "pre-publication"
+
+
+async def get_purchasability(standard: Standard, db: AsyncSession) -> dict:
+    """
+    Derive upload/purchase availability for a standard.
+
+    Async and session-taking on purpose: document_count needs a COUNT query.
+    These values must never become lazy ORM properties on Standard — a lazy
+    load triggered from synchronous code (e.g. building a response model)
+    raises MissingGreenlet under async SQLAlchemy.
+    """
+    draft = is_draft_stage(standard.stage_code)
+
+    count_result = await db.execute(
+        select(func.count(Document.id)).where(
+            Document.standard_id == standard.id,
+            Document.is_current == True,  # noqa: E712
+        )
+    )
+    document_count: int = count_result.scalar_one()
+
+    can_upload = not draft
+    can_purchase = not draft and document_count > 0 and not standard.is_purchased
+
+    reason: str | None = None
+    if draft:
+        reason = DRAFT_BLOCKED_REASON.format(stage=_stage_label(standard))
+    elif document_count == 0 and not standard.is_purchased:
+        reason = NO_DOCUMENT_BLOCKED_REASON
+
+    return {
+        "is_draft": draft,
+        "document_count": document_count,
+        "can_upload": can_upload,
+        "can_purchase": can_purchase,
+        "purchase_blocked_reason": reason,
+    }
 
 
 async def get_amendments(standard_id: uuid.UUID, db: AsyncSession) -> list[Standard]:

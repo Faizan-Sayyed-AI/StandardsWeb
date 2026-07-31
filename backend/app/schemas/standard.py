@@ -70,6 +70,16 @@ class StandardDetail(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # ── Derived (computed by standard_service.get_purchasability) ─────────
+    # Not ORM columns. Defaults exist so the model can still be built in
+    # contexts that have no session, but every API path populates them
+    # explicitly — see app/api/v1/standards.py.
+    is_draft: bool = False
+    document_count: int = 0
+    can_upload: bool = True
+    can_purchase: bool = False
+    purchase_blocked_reason: str | None = None
+
     model_config = {"from_attributes": True}
 
 

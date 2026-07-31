@@ -127,7 +127,11 @@ async def create_standard(
         "triggered_by_id": str(current_user.id),
     })
 
-    return StandardDetail.model_validate(standard)
+    flags = await standard_service.get_purchasability(standard, db)
+    return StandardDetail(
+        **StandardDetail.model_validate(standard).model_dump(exclude=set(flags)),
+        **flags,
+    )
 
 
 @router.get(
@@ -167,8 +171,10 @@ async def get_standard(
     """Fetch a single standard's full detail including linked amendments. Returns 404 if not found."""
     standard = await standard_service.get_standard(standard_id, db)
     amendments = await standard_service.get_amendments(standard_id, db)
+    flags = await standard_service.get_purchasability(standard, db)
     return StandardDetailWithAmendments(
-        **StandardDetail.model_validate(standard).model_dump(),
+        **StandardDetail.model_validate(standard).model_dump(exclude=set(flags)),
+        **flags,
         amendments=[StandardListItem.model_validate(a) for a in amendments],
     )
 
@@ -236,5 +242,9 @@ async def purchase_standard(
             "triggered_by_id": str(current_user.id),
         })
 
-    return StandardDetail.model_validate(standard)
+    flags = await standard_service.get_purchasability(standard, db)
+    return StandardDetail(
+        **StandardDetail.model_validate(standard).model_dump(exclude=set(flags)),
+        **flags,
+    )
 
