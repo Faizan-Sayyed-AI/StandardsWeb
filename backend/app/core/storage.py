@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 from pathlib import Path
 from typing import BinaryIO, Protocol, runtime_checkable
 
@@ -74,8 +75,11 @@ class LocalStorageBackend:
     def upload(self, file: BinaryIO, key: str) -> str:
         target = self._full_path(key)
         target.parent.mkdir(parents=True, exist_ok=True)
+        # Stream in chunks rather than file.read() — with MAX_UPLOAD_SIZE_MB at
+        # 200, reading the whole upload into memory would spike ~200 MB per
+        # request, and concurrent uploads would multiply that.
         with open(target, "wb") as f:
-            f.write(file.read())
+            shutil.copyfileobj(file, f, length=1024 * 1024)
         log.info("storage.local.upload", key=key, path=str(target))
         return key
 

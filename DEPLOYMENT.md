@@ -490,8 +490,15 @@ server {
     include             /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
-    # Increase upload limit for document uploads (default 1m is too small)
-    client_max_body_size 55M;
+    # Document uploads. Must exceed the app's MAX_UPLOAD_SIZE_MB (200) plus
+    # multipart overhead — nginx returns its own 413 before FastAPI sees the
+    # request, so raising MAX_UPLOAD_SIZE_MB alone has no effect.
+    client_max_body_size 210M;
+
+    # Large uploads over a slow link need longer than the 60s defaults.
+    client_body_timeout 300s;
+    proxy_read_timeout  300s;
+    proxy_send_timeout  300s;
 
     # ── API — proxy to FastAPI ─────────────────────────────
     location /api/ {
@@ -655,6 +662,7 @@ SMTP_FROM_ADDRESS=noreply@yourdomain.com
 | `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | Refresh token lifetime in days |
 | `PASSWORD_RESET_TOKEN_EXPIRE_HOURS` | No | `1` | Password reset token lifetime |
 | `STORAGE_BACKEND` | No | `local` | `local` or `s3` |
+| `MAX_UPLOAD_SIZE_MB` | No | `200` | Max document upload size. Keep nginx `client_max_body_size` above this |
 | `LOCAL_STORAGE_PATH` | No | `/app/storage` | Path inside container for local storage |
 | `S3_BUCKET_NAME` | If S3 | — | S3 bucket name |
 | `AWS_REGION` | If S3 | `us-east-1` | AWS region |

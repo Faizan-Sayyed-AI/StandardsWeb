@@ -46,8 +46,10 @@ class Settings(BaseSettings):
 
     # ── Storage ───────────────────────────────────────────
     STORAGE_BACKEND: str = "local"  # "local" | "s3"
-    # Keep below the reverse proxy's client_max_body_size (55M in DEPLOYMENT.md)
-    MAX_UPLOAD_SIZE_MB: int = 50
+    # Must stay below the reverse proxy's client_max_body_size (210M in
+    # DEPLOYMENT.md) — nginx rejects an oversized body with its own 413 before
+    # FastAPI ever sees the request, so raising this alone is not enough.
+    MAX_UPLOAD_SIZE_MB: int = 200
     LOCAL_STORAGE_PATH: str = "/app/storage"
     S3_BUCKET_NAME: str = ""
     AWS_REGION: str = "us-east-1"
