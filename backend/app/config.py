@@ -1,10 +1,26 @@
 """
 Application configuration.
 
-All settings are read from environment variables (or a .env file in dev).
+Settings come from (lowest to highest precedence):
+
+  1. the defaults in this file
+  2. `.env`                       — shared/base values
+  3. `.env.<APP_ENV>`             — only when APP_ENV is set (e.g. .env.production)
+  4. real process environment variables
+
 Access the singleton via: from app.config import settings
+
+APP_ENV selects the second env file and nothing else — it is read from the
+process environment, never from an env file, because it decides which file to
+read. With APP_ENV unset the behaviour is exactly as before: `.env` only.
+Note this is distinct from ENVIRONMENT, which stays a *value* controlling
+production safety checks (see _reject_insecure_secret_in_production).
+
+Example (systemd unit):
+    Environment=APP_ENV=production
 """
 
+import os
 from functools import lru_cache
 
 from pydantic import model_validator
@@ -14,9 +30,23 @@ _INSECURE_DEFAULT_SECRET_KEY = "dev-secret-change-me-in-production-use-32-random
 _INSECURE_DEFAULT_API_KEY_ENCRYPTION_KEY = "cGdh0W0zLiiPteRJHYaymhXCJ9Vco-Bq9T1ZjeIKChM="
 
 
+def _env_files() -> tuple[str, ...]:
+    """
+    Env files in load order — later files override earlier ones, and a file
+    that does not exist is simply skipped.
+
+    Returns just (".env",) when APP_ENV is unset, so existing deployments that
+    only have a .env are unaffected.
+    """
+    app_env = os.environ.get("APP_ENV", "").strip()
+    if not app_env:
+        return (".env",)
+    return (".env", f".env.{app_env}")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_files(),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True,

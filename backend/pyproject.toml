@@ -45,6 +45,10 @@ dependencies = [
     "python-multipart==0.0.*",   # multipart/form-data upload support
     "python-magic==0.4.*",       # magic-byte file type detection
 
+    # S3 document storage (STORAGE_BACKEND=s3) — imported lazily in
+    # app/core/storage.py, so its absence only surfaces at first upload
+    "boto3>=1.34",
+
     # Observability
     "structlog==24.*",
 
