@@ -164,9 +164,14 @@ async def upload_document(
         old_doc.is_current = False
 
     # 6. Persist to storage (also blocking I/O — offload to a threadpool).
-    # Note: the S3 backend streams via upload_fileobj, but the local backend
-    # buffers the whole file in memory (dev-only; see LocalStorageBackend.upload).
-    storage_key = f"standards/{standard_id}/{next_version}_{original_filename}"
+    # Note: the S3 backend streams via upload_fileobj; the local backend streams
+    # in 1 MB chunks (see LocalStorageBackend.upload).
+    #
+    # The key carries no leading namespace segment — namespacing is the storage
+    # backend's job, via S3_PREFIX for S3 or LOCAL_STORAGE_PATH for local disk.
+    # That keeps the stored key identical across backends and lets the bucket
+    # layout change without touching documents.storage_path.
+    storage_key = f"{standard_id}/{next_version}_{original_filename}"
     storage = get_storage_backend()
     file_data.seek(0)
     await asyncio.to_thread(storage.upload, file_data, storage_key)
