@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 200
     LOCAL_STORAGE_PATH: str = "/app/storage"
     S3_BUCKET_NAME: str = ""
+    # Optional key prefix ("folder") inside the bucket, e.g. "standards_files".
+    # Applied by S3StorageBackend only — documents.storage_path stays free of it,
+    # so the bucket layout can change without a data migration.
+    S3_PREFIX: str = ""
     AWS_REGION: str = "us-east-1"
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""

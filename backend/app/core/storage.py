@@ -113,24 +113,32 @@ class S3StorageBackend:
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY or None,
         )
         self._bucket = settings.S3_BUCKET_NAME
+        # Optional "folder" inside the bucket. Stored separately from the key so
+        # documents.storage_path stays prefix-free — the same row works whether
+        # the backend is local, S3 at the bucket root, or S3 under a prefix.
+        self._prefix = settings.S3_PREFIX.strip("/")
+
+    def _object_key(self, key: str) -> str:
+        """Map a storage key to its full S3 object key, applying S3_PREFIX."""
+        return f"{self._prefix}/{key}" if self._prefix else key
 
     def upload(self, file: BinaryIO, key: str) -> str:
-        self._s3.upload_fileobj(file, self._bucket, key)
-        log.info("storage.s3.upload", bucket=self._bucket, key=key)
+        self._s3.upload_fileobj(file, self._bucket, self._object_key(key))
+        log.info("storage.s3.upload", bucket=self._bucket, key=self._object_key(key))
         return key
 
     def download_url(self, key: str, ttl: int = 900) -> str:
         url: str = self._s3.generate_presigned_url(
             "get_object",
-            Params={"Bucket": self._bucket, "Key": key},
+            Params={"Bucket": self._bucket, "Key": self._object_key(key)},
             ExpiresIn=ttl,
         )
-        log.info("storage.s3.presigned_url", key=key, ttl=ttl)
+        log.info("storage.s3.presigned_url", key=self._object_key(key), ttl=ttl)
         return url
 
     def delete(self, key: str) -> None:
-        self._s3.delete_object(Bucket=self._bucket, Key=key)
-        log.info("storage.s3.delete", bucket=self._bucket, key=key)
+        self._s3.delete_object(Bucket=self._bucket, Key=self._object_key(key))
+        log.info("storage.s3.delete", bucket=self._bucket, key=self._object_key(key))
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────
