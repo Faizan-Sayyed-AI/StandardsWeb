@@ -9,17 +9,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/30 active:scale-95",
+          "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm active:scale-[0.98]",
         destructive:
-          "bg-red-600/20 text-red-400 border border-red-600/30 hover:bg-red-600/30 active:scale-95",
+          "bg-danger-soft text-danger border border-danger-line hover:bg-danger hover:text-primary-foreground hover:border-transparent active:scale-[0.98]",
         outline:
-          "border border-border bg-foreground/5 hover:bg-foreground/10 text-foreground active:scale-95",
+          "border border-border-strong bg-card text-foreground shadow-sm hover:bg-muted active:scale-[0.98]",
         secondary:
-          "bg-foreground/8 text-foreground hover:bg-foreground/12 active:scale-95",
-        ghost: "hover:bg-foreground/8 text-foreground active:scale-95",
-        link: "text-indigo-400 underline-offset-4 hover:underline p-0 h-auto",
+          "bg-secondary text-secondary-foreground hover:bg-foreground/10 active:scale-[0.98]",
+        ghost: "text-foreground hover:bg-muted active:scale-[0.98]",
+        link: "text-brand underline-offset-4 hover:underline p-0 h-auto",
         success:
-          "bg-teal-600/20 text-teal-400 border border-teal-600/30 hover:bg-teal-600/30 active:scale-95",
+          "bg-success-soft text-success border border-success-line hover:bg-success hover:text-primary-foreground hover:border-transparent active:scale-[0.98]",
       },
       size: {
         default: "h-9 px-4 py-2",

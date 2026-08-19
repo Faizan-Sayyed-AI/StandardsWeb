@@ -32,13 +32,13 @@ export function SchedulePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-purple-400" />
+          <Calendar className="h-6 w-6 text-violet" />
           Schedule Configuration
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           View and manage the polling schedule for all configured RSS feeds.
           Edit individual feed schedules from the{" "}
-          <a href="/feeds" className="text-indigo-400 hover:underline">
+          <a href="/feeds" className="text-brand hover:underline">
             Feed Management
           </a>{" "}
           page.
@@ -52,19 +52,19 @@ export function SchedulePage() {
             label: "Total Scheduled",
             value: data?.total,
             icon: Calendar,
-            color: "text-purple-400 bg-purple-600/20",
+            color: "text-violet bg-violet-soft",
           },
           {
             label: "Active Schedules",
             value: data?.items.filter((f) => f.is_enabled).length,
             icon: Clock,
-            color: "text-teal-400 bg-teal-600/20",
+            color: "text-success bg-success-soft",
           },
           {
             label: "Disabled",
             value: data?.items.filter((f) => !f.is_enabled).length,
             icon: Settings,
-            color: "text-yellow-400 bg-yellow-600/20",
+            color: "text-warning bg-warning-soft",
           },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="p-5">
@@ -87,7 +87,7 @@ export function SchedulePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="h-4 w-4 text-purple-400" />
+            <Clock className="h-4 w-4 text-violet" />
             Feed Schedules
           </CardTitle>
         </CardHeader>
@@ -103,19 +103,19 @@ export function SchedulePage() {
               {data.items.map((feed) => (
                 <div
                   key={feed.id}
-                  className="flex items-center gap-4 rounded-lg border border-border bg-foreground/4 p-4 transition-colors hover:bg-foreground/6"
+                  className="flex items-center gap-4 rounded-lg border border-border bg-muted p-4 transition-colors hover:bg-muted"
                 >
                   {/* Status indicator */}
                   <div
                     className={`h-2 w-2 rounded-full shrink-0 ${
-                      feed.is_enabled ? "bg-teal-400" : "bg-foreground/20"
+                      feed.is_enabled ? "bg-success" : "bg-foreground/20"
                     }`}
                   />
 
                   {/* Feed info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <Rss className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      <Rss className="h-3.5 w-3.5 text-info shrink-0" />
                       <p className="text-sm font-medium text-foreground truncate">{feed.name}</p>
                       {feed.tc_committee && (
                         <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
@@ -147,7 +147,7 @@ export function SchedulePage() {
                   <div
                     className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium border ${
                       feed.is_enabled
-                        ? "border-teal-500/30 bg-teal-500/10 text-teal-300"
+                        ? "border-success-line bg-success-soft text-success"
                         : "border-border bg-foreground/5 text-muted-foreground"
                     }`}
                   >
@@ -158,9 +158,9 @@ export function SchedulePage() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-              <Calendar className="h-10 w-10 text-muted-foreground/30" />
+              <Calendar className="h-10 w-10 text-subtle-foreground" />
               <p className="text-sm text-muted-foreground">No feeds configured yet</p>
-              <a href="/feeds" className="text-xs text-indigo-400 hover:underline">
+              <a href="/feeds" className="text-xs text-brand hover:underline">
                 Go to Feed Management →
               </a>
             </div>
@@ -168,7 +168,7 @@ export function SchedulePage() {
         </CardContent>
       </Card>
 
-      <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/8 p-4 text-sm text-yellow-300/80">
+      <div className="rounded-lg border border-warning-line bg-warning-soft p-4 text-sm text-warning">
         <strong>Note:</strong> Schedule changes take effect within 5 minutes as Celery Beat
         re-reads its schedule table. To trigger an immediate poll, use the{" "}
         <a href="/feeds" className="underline">Play button on the Feeds page</a>.

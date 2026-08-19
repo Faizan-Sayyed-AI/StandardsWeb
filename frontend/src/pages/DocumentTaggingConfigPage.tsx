@@ -58,7 +58,7 @@ export function DocumentTaggingConfigPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Tag className="h-6 w-6 text-teal-400" />
+          <Tag className="h-6 w-6 text-success" />
           Document Tagging
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -82,12 +82,12 @@ export function DocumentTaggingConfigPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {errorMsg && (
-                <div className="border border-red-500/20 bg-red-500/10 text-red-400 p-3 rounded-lg text-sm">
+                <div className="border border-danger-line bg-danger-soft text-danger p-3 rounded-lg text-sm">
                   {errorMsg}
                 </div>
               )}
               {successMsg && (
-                <div className="border border-teal-500/20 bg-teal-500/10 text-teal-300 p-3 rounded-lg text-sm">
+                <div className="border border-success-line bg-success-soft text-success p-3 rounded-lg text-sm">
                   {successMsg}
                 </div>
               )}
@@ -117,7 +117,7 @@ export function DocumentTaggingConfigPage() {
                 <Button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="gap-2 bg-teal-600 hover:bg-teal-700"
+                  className="gap-2 bg-success hover:bg-success"
                 >
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -132,7 +132,7 @@ export function DocumentTaggingConfigPage() {
         </CardContent>
       </Card>
 
-      <div className="rounded-lg border border-teal-500/10 bg-teal-500/5 px-4 py-3 flex gap-3 text-sm text-teal-300">
+      <div className="rounded-lg border border-success-line bg-success-soft px-4 py-3 flex gap-3 text-sm text-success">
         <Info className="h-5 w-5 shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold">If left unconfigured</p>

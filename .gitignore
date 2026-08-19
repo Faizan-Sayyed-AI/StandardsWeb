@@ -79,5 +79,13 @@ scripts/.env.dbsync
 
 # Source standard documents staged for bulk upload. Hundreds of MB of licensed
 # PDFs — belongs on disk / in object storage, never in git. Anchored to the repo
-# root so it does not also match backend/storage/standards/.
+# root so it does not also match backend/storage/.
 /Standards/
+/Standards.zip
+/Standards*.zip
+
+# Uploaded documents written by the local storage backend. Keys are
+# <standard-id>/<version>_<filename>, so the whole directory has to be ignored —
+# the old backend/storage/standards/ rule stopped matching when the standards/
+# segment was dropped from the key, and a licensed PDF got committed as a result.
+backend/storage/

@@ -35,14 +35,14 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex" id="login_page_form">
       {/* Left panel — branding */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-950 p-12 border-r border-white/8 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-[linear-gradient(140deg,#141a33_0%,#1e2560_45%,#0d1022_100%)] p-12 border-r border-border relative overflow-hidden">
         {/* Background orbs */}
-        <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
-        <div className="absolute -bottom-40 -right-20 h-80 w-80 rounded-full bg-teal-500/8 blur-3xl" />
+        <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-brand-soft blur-3xl" />
+        <div className="absolute -bottom-40 -right-20 h-80 w-80 rounded-full bg-success-soft blur-3xl" />
 
         {/* Logo */}
         <div className="relative flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-teal-500 shadow-lg shadow-indigo-900/50">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-indigo-900/50">
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -69,7 +69,7 @@ export function LoginPage() {
             {["ISO 9001", "IEC 60601", "ISO/IEC 27001", "IEEE 802.3"].map((std) => (
               <span
                 key={std}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm"
+                className="rounded-full border border-border bg-foreground/5 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm"
               >
                 {std}
               </span>
@@ -94,12 +94,12 @@ export function LoginPage() {
 
       {/* Right panel — login form */}
       <div className="flex flex-1 flex-col items-center justify-center p-8 relative">
-        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-indigo-600/5 blur-3xl" />
+        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-brand-soft blur-3xl" />
 
         <div className="w-full max-w-sm space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-teal-500">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
               <Shield className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-foreground">StandardSphere</span>
@@ -113,7 +113,7 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error alert */}
             {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              <div className="rounded-lg border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
                 {error}
               </div>
             )}

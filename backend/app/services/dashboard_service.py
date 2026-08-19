@@ -17,6 +17,7 @@ from app.models.rss_feed import RssFeed
 from app.models.standard import Standard, StandardStatus
 from app.models.standard_history import StandardHistory
 from app.schemas.dashboard import DashboardStats
+from app.services.standard_service import library_parents_subquery
 
 log = structlog.get_logger(__name__)
 
@@ -27,17 +28,34 @@ async def get_dashboard_stats(user_id: uuid.UUID, db: AsyncSession) -> Dashboard
 
     Queries run sequentially (all are fast indexed count queries).
     """
+    # The three standard counts share one population: the standards the library
+    # list shows by default — one row per version group (its newest edition),
+    # and only where that parent carries an edition.
+    #
+    # A flat COUNT(*) over `standards` counted every superseded edition and
+    # every amendment row, so the KPI read far higher than the list it is meant
+    # to summarise. They must also share a denominator, or the Library Health
+    # percentages (active/total, purchased/total) are computed across different
+    # populations and stop meaning anything.
+    parents = library_parents_subquery()
+
     # Total standards
-    total_standards_r = await db.execute(select(func.count(Standard.id)))
+    total_standards_r = await db.execute(select(func.count()).select_from(parents))
     total_standards: int = total_standards_r.scalar_one()
 
     # Active standards
     active_r = await db.execute(
-        select(func.count(Standard.id)).where(Standard.status == StandardStatus.active)
+        select(func.count())
+        .select_from(parents)
+        .where(parents.c.status == StandardStatus.active)
     )
     active_standards: int = active_r.scalar_one()
 
-    # Purchased standards
+    # Purchased standards — counted across the whole table on purpose. A
+    # purchase is a thing the organisation bought; it stays bought when a newer
+    # edition supersedes it, and standards whose reference carries no year (many
+    # ASTM/IEC/ANSI designations) have no edition at all. Restricting this to
+    # current editions under-reported it by half.
     purchased_r = await db.execute(
         select(func.count(Standard.id)).where(Standard.is_purchased == True)  # noqa: E712
     )

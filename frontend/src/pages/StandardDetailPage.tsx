@@ -42,22 +42,22 @@ const EVENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 const EVENT_COLORS: Record<string, string> = {
-  new: "border-teal-500/30 bg-teal-500/10 text-teal-400",
-  updated: "border-blue-500/30 bg-blue-500/10 text-blue-400",
-  amended: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
-  replaced: "border-orange-500/30 bg-orange-500/10 text-orange-400",
-  withdrawn: "border-red-500/30 bg-red-500/10 text-red-400",
+  new: "border-success-line bg-success-soft text-success",
+  updated: "border-info-line bg-info-soft text-info",
+  amended: "border-warning-line bg-warning-soft text-warning",
+  replaced: "border-warning-line bg-warning-soft text-warning",
+  withdrawn: "border-danger-line bg-danger-soft text-danger",
 };
 
 // ── Timeline event styling ──────────────────────────────────────────────────
 
 const EVENT_DOT_COLORS: Record<string, string> = {
-  new: "bg-emerald-500",
-  updated: "bg-blue-500",
-  amended: "bg-amber-500",
-  withdrawn: "bg-red-500",
-  replaced: "bg-orange-500",
-  default: "bg-slate-500",
+  new: "bg-success",
+  updated: "bg-info",
+  amended: "bg-warning",
+  withdrawn: "bg-danger",
+  replaced: "bg-warning",
+  default: "bg-muted",
 };
 
 // ── Event badge: icon + plain-English label + derived secondary line ────────
@@ -96,7 +96,7 @@ interface SnapshotRowProps {
 function SnapshotRow({ label, value, changed }: SnapshotRowProps) {
   return (
     <div
-      className={`flex items-baseline justify-between gap-3 rounded px-2 py-1.5 text-xs ${changed ? "bg-amber-500/10" : ""
+      className={`flex items-baseline justify-between gap-3 rounded px-2 py-1.5 text-xs ${changed ? "bg-warning-soft" : ""
         }`}
     >
       <span className="text-muted-foreground shrink-0">{label}</span>
@@ -242,7 +242,7 @@ function SnapshotModal({
   // instead of the full viewport.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-all duration-200"
+      className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm transition-all duration-200"
       onClick={onClose}
     >
       <div
@@ -263,8 +263,8 @@ function SnapshotModal({
             </span>
             <span
               className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${isRss
-                  ? "border-slate-500/30 bg-slate-500/10 text-slate-300"
-                  : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
+                  ? "border-border bg-foreground/5 text-muted-foreground"
+                  : "border-brand-line bg-brand-soft text-brand"
                 }`}
             >
               Via {isRss ? "RSS" : "Manual"}
@@ -294,13 +294,13 @@ function SnapshotModal({
           {!isInitial && !isAmendment && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="mb-2 rounded bg-red-950/30 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-red-300">
+                <p className="mb-2 rounded bg-danger-soft px-2 py-1 text-xs font-semibold uppercase tracking-wide text-danger">
                   Before
                 </p>
                 <SnapshotFields value={item.old_value ?? {}} changedKeys={changedKeys} />
               </div>
               <div>
-                <p className="mb-2 rounded bg-green-950/30 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-green-300">
+                <p className="mb-2 rounded bg-success-soft px-2 py-1 text-xs font-semibold uppercase tracking-wide text-success">
                   After
                 </p>
                 <SnapshotFields value={item.new_value} changedKeys={changedKeys} />
@@ -341,8 +341,8 @@ function TimelineNodeContent({ item, onView }: TimelineNodeContentProps) {
         <EventBadge item={item} />
         <span
           className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${isRss
-              ? "border-slate-500/30 bg-slate-500/10 text-slate-300"
-              : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
+              ? "border-border bg-foreground/5 text-muted-foreground"
+              : "border-brand-line bg-brand-soft text-brand"
             }`}
         >
           Via {isRss ? "RSS" : "Manual"}
@@ -459,7 +459,7 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </div>
-                <div className="rounded-lg border border-border bg-foreground/4 p-4">
+                <div className="rounded-lg border border-border bg-muted p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={item.event_type} />
@@ -473,7 +473,7 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
                   </div>
                   <button
                     onClick={() => setOpenItem(item)}
-                    className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                    className="text-xs font-medium text-brand hover:text-brand transition-colors"
                   >
                     View Snapshot
                   </button>
@@ -493,11 +493,11 @@ function ChangeHistoryTimeline({ items }: { items: HistoryItem[] }) {
 }
 
 const MIME_BADGE_COLORS: Record<string, string> = {
-  PDF: "bg-red-500/15 text-red-400 border-red-500/25",
-  DOCX: "bg-blue-500/15 text-blue-400 border-blue-500/25",
-  XLSX: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
-  DOC: "bg-blue-500/15 text-blue-400 border-blue-500/25",
-  XLS: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
+  PDF: "bg-danger-soft text-danger border-danger-line",
+  DOCX: "bg-info-soft text-info border-info-line",
+  XLSX: "bg-success-soft text-success border-success-line",
+  DOC: "bg-info-soft text-info border-info-line",
+  XLS: "bg-success-soft text-success border-success-line",
 };
 
 const ACCEPTED_TYPES =
@@ -556,15 +556,15 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
   return (
     /* Backdrop */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget && !isUploading) onClose(); }}
     >
       <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-border bg-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/20 border border-indigo-500/20">
-              <Upload className="h-4 w-4 text-indigo-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft border border-brand-line">
+              <Upload className="h-4 w-4 text-brand" />
             </div>
             <div>
               <h2 className="text-base font-semibold text-foreground">Upload Document</h2>
@@ -589,8 +589,8 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
             onClick={() => !isUploading && fileRef.current?.click()}
             className={`relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-colors
               ${selectedFile
-                ? "border-indigo-500/50 bg-indigo-500/5"
-                : "border-border bg-foreground/3 hover:border-foreground/25 hover:bg-foreground/5"
+                ? "border-brand-line bg-brand-soft"
+                : "border-border bg-muted/60 hover:border-border-strong hover:bg-muted"
               }
               ${isUploading ? "pointer-events-none opacity-60" : ""}
             `}
@@ -605,8 +605,8 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
             />
             {selectedFile ? (
               <>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600/20 border border-indigo-500/20">
-                  <FileText className="h-6 w-6 text-indigo-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft border border-brand-line">
+                  <FileText className="h-6 w-6 text-brand" />
                 </div>
                 <p className="text-sm font-medium text-foreground text-center break-all">
                   {selectedFile.name}
@@ -614,7 +614,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
                 <p className="text-xs text-muted-foreground">
                   {formatFileSize(selectedFile.size)}
                 </p>
-                <p className="text-xs text-indigo-400 mt-1">Click to change file</p>
+                <p className="text-xs text-brand mt-1">Click to change file</p>
               </>
             ) : (
               <>
@@ -625,7 +625,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
                   <span className="text-foreground font-medium">Click to browse</span>{" "}
                   or drag and drop
                 </p>
-                <p className="text-xs text-muted-foreground/60">PDF, DOCX, XLSX</p>
+                <p className="text-xs text-subtle-foreground">PDF, DOCX, XLSX</p>
               </>
             )}
           </div>
@@ -641,7 +641,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
               disabled={isUploading}
               rows={2}
               placeholder="What changed in this version?"
-              className="w-full rounded-lg border border-border bg-foreground/4 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg border border-border-strong bg-input px-3 py-2 text-sm text-foreground placeholder:text-subtle-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary disabled:opacity-50 transition-colors"
             />
           </div>
 
@@ -654,7 +654,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
               </div>
               <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-teal-500 rounded-full transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -663,7 +663,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
 
           {/* Error */}
           {uploadError && (
-            <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            <div className="rounded-lg border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger">
               {uploadError}
             </div>
           )}
@@ -683,11 +683,11 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
             size="sm"
             disabled={!selectedFile || isUploading}
             onClick={() => mutation.mutate()}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-500 text-white"
+            className="gap-2"
           >
             {isUploading ? (
               <>
-                <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <div className="h-3.5 w-3.5 rounded-full border-2 border-border border-t-white animate-spin" />
                 Uploading…
               </>
             ) : (
@@ -806,7 +806,7 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
             onClick={() => setShowUploadModal(true)}
             disabled={!stageAllowsUpload}
             title={!stageAllowsUpload ? (blockedReason ?? undefined) : undefined}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Upload className="h-3.5 w-3.5" />
             Upload Document
@@ -823,15 +823,15 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
       {docs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-foreground/5 border border-border">
-            <FileText className="h-7 w-7 text-muted-foreground/40" />
+            <FileText className="h-7 w-7 text-subtle-foreground" />
           </div>
           <p className="text-sm font-medium text-muted-foreground">No documents uploaded yet</p>
           {canUpload && (
-            <p className="text-xs text-muted-foreground/60">
+            <p className="text-xs text-subtle-foreground">
               Click{" "}
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="text-indigo-400 underline underline-offset-2"
+                className="text-brand underline underline-offset-2"
               >
                 Upload Document
               </button>{" "}
@@ -852,12 +852,12 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
                 key={doc.id}
                 className={`flex items-center gap-4 rounded-xl border p-4 transition-colors
                   ${isCurrent
-                    ? "border-border bg-foreground/4 hover:bg-foreground/6"
-                    : "border-border/50 bg-foreground/2 opacity-60 hover:opacity-80"
+                    ? "border-border bg-muted hover:bg-muted"
+                    : "border-border/50 bg-muted/60 opacity-60 hover:opacity-80"
                   }`}
               >
                 {/* File type icon */}
-                <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-lg bg-foreground/6 border border-border">
+                <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-lg bg-muted border border-border">
                   <FileText className="h-5 w-5 text-muted-foreground" />
                 </div>
 
@@ -876,18 +876,18 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
                       v{doc.version_number}
                     </span>
                     {isCurrent && (
-                      <span className="text-[10px] font-medium text-teal-400 border border-teal-500/30 bg-teal-500/10 rounded-full px-2 py-0.5">
+                      <span className="text-[10px] font-medium text-success border border-success-line bg-success-soft rounded-full px-2 py-0.5">
                         Current
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                     <span>{formatFileSize(doc.file_size_bytes)}</span>
-                    <span className="text-muted-foreground/40">·</span>
+                    <span className="text-subtle-foreground">·</span>
                     <span title={formatDateTime(doc.uploaded_at)}>{timeAgo(doc.uploaded_at)}</span>
                     {doc.change_notes && (
                       <>
-                        <span className="text-muted-foreground/40">·</span>
+                        <span className="text-subtle-foreground">·</span>
                         <span className="italic truncate max-w-[200px]" title={doc.change_notes}>
                           {doc.change_notes}
                         </span>
@@ -901,7 +901,7 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
                       )}
                       {doc.tags.status === "failed" && (
                         <>
-                          <span className="text-[10px] text-red-400">Tagging failed</span>
+                          <span className="text-[10px] text-danger">Tagging failed</span>
                           {(isAdmin || isManager) && (
                             <button
                               onClick={() => {
@@ -909,7 +909,7 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
                                 retagMutation.mutate(doc.id);
                               }}
                               disabled={retagMutation.isPending && retaggingId === doc.id}
-                              className="inline-flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+                              className="inline-flex items-center gap-1 text-[10px] text-brand hover:text-brand underline underline-offset-2"
                             >
                               {retagMutation.isPending && retaggingId === doc.id ? (
                                 <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -934,7 +934,7 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
                             </Badge>
                           ))}
                           {doc.tags.summary && (
-                            <p className="text-[10px] text-muted-foreground/80 italic truncate max-w-full basis-full">
+                            <p className="text-[10px] text-subtle-foreground italic truncate max-w-full basis-full">
                               {doc.tags.summary}
                             </p>
                           )}
@@ -951,11 +951,11 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
                     size="sm"
                     onClick={() => handleDownload(doc)}
                     disabled={downloadingId === doc.id}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-teal-400 hover:bg-teal-500/10"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-success hover:bg-success-soft"
                     title="Download"
                   >
                     {downloadingId === doc.id ? (
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-foreground/20 border-t-teal-400 animate-spin" />
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-border-strong border-t-teal-400 animate-spin" />
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
@@ -972,11 +972,11 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
                         }
                       }}
                       disabled={deleteMutation.isPending && deletingId === doc.id}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-danger hover:bg-danger-soft"
                       title="Soft-delete this version"
                     >
                       {deleteMutation.isPending && deletingId === doc.id ? (
-                        <div className="h-3.5 w-3.5 rounded-full border-2 border-foreground/20 border-t-red-400 animate-spin" />
+                        <div className="h-3.5 w-3.5 rounded-full border-2 border-border-strong border-t-red-400 animate-spin" />
                       ) : (
                         <Trash2 className="h-4 w-4" />
                       )}
@@ -989,7 +989,7 @@ function DocumentsTab({ standardId, canUpload: stageAllowsUpload, blockedReason 
 
           {/* Version count footer */}
           {docs.length > 1 && (
-            <p className="text-xs text-muted-foreground/50 text-center pt-1">
+            <p className="text-xs text-subtle-foreground text-center pt-1">
               {docs.length} version{docs.length !== 1 ? "s" : ""} total
               {docs.filter((d) => !d.is_current).length > 0 &&
                 ` · ${docs.filter((d) => !d.is_current).length} archived`}
@@ -1079,7 +1079,7 @@ export function StandardDetailPage() {
   if (!standard) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
-        <BookOpen className="h-12 w-12 text-muted-foreground/30" />
+        <BookOpen className="h-12 w-12 text-subtle-foreground" />
         <p className="text-lg font-semibold text-foreground">Standard not found</p>
         <Button variant="outline" onClick={() => navigate("/standards")}>
           Back to library
@@ -1104,12 +1104,12 @@ export function StandardDetailPage() {
       {/* Header card */}
       <Card className="overflow-hidden">
         {/* Gradient top bar */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-teal-500 to-blue-600" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-primary via-accent to-info" />
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="space-y-3">
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600/20 border border-indigo-500/20 text-xs font-bold text-indigo-300">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft border border-brand-line text-xs font-bold text-brand">
                   {standard.standards_body ?? "ISO"}
                 </div>
                 <div>
@@ -1122,7 +1122,7 @@ export function StandardDetailPage() {
                 </div>
                 <StatusBadge status={standard.status} />
                 {standard.is_purchased ? (
-                  <span className="text-xs font-medium text-teal-400 border border-teal-500/30 bg-teal-500/10 rounded-full px-2 py-0.5">
+                  <span className="text-xs font-medium text-success border border-success-line bg-success-soft rounded-full px-2 py-0.5">
                     ✓ Purchased
                   </span>
                 ) : (
@@ -1133,7 +1133,7 @@ export function StandardDetailPage() {
                         onClick={handlePurchase}
                         disabled={purchaseMutation.isPending || !standard.can_purchase}
                         title={standard.purchase_blocked_reason ?? undefined}
-                        className="h-7 px-3 bg-teal-600 hover:bg-teal-700 text-xs gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-7 px-3 bg-success hover:bg-success text-xs gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {purchaseMutation.isPending ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -1185,7 +1185,6 @@ export function StandardDetailPage() {
           },
           { icon: Calendar, label: "Stage Date", value: formatDate(standard.published_date) },
           { icon: Calendar, label: "Last Updated", value: formatDate(standard.updated_at) },
-          { icon: Calendar, label: "Added", value: formatDate(standard.created_at) },
           {
             icon: Package,
             label: "Purchased",
@@ -1208,9 +1207,9 @@ export function StandardDetailPage() {
 
       {/* Base Standard banner — shown when this record is an amendment */}
       {standard.parent_standard_id && (
-        <div className="flex items-center gap-3 rounded-xl border border-indigo-500/25 bg-indigo-500/8 px-4 py-3">
-          <GitBranch className="h-4 w-4 text-indigo-400 shrink-0" />
-          <p className="text-sm text-indigo-300 flex-1">
+        <div className="flex items-center gap-3 rounded-xl border border-brand-line bg-brand-soft px-4 py-3">
+          <GitBranch className="h-4 w-4 text-brand shrink-0" />
+          <p className="text-sm text-brand flex-1">
             This is an amendment or corrigendum of{" "}
             <span className="font-semibold text-foreground">
               {parentStandard?.iso_reference ?? "the base standard"}
@@ -1220,7 +1219,7 @@ export function StandardDetailPage() {
             variant="outline"
             size="sm"
             onClick={() => navigate(`/standards/${standard.parent_standard_id}`)}
-            className="gap-2 border-indigo-500/30 text-indigo-300 hover:text-indigo-200 shrink-0"
+            className="gap-2 border-brand-line text-brand hover:text-brand shrink-0"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             View Base Standard
@@ -1233,23 +1232,23 @@ export function StandardDetailPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <GitBranch className="h-4 w-4 text-yellow-400" />
+              <GitBranch className="h-4 w-4 text-warning" />
               Amendments &amp; Corrigenda
-              <span className="ml-1 rounded-full bg-yellow-500/15 border border-yellow-500/25 px-2 py-0.5 text-[10px] font-semibold text-yellow-400">
+              <span className="ml-1 rounded-full bg-warning-soft border border-warning-line px-2 py-0.5 text-[10px] font-semibold text-warning">
                 {standard.amendments.length}
               </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="divide-y divide-white/6">
+            <div className="divide-y divide-border">
               {standard.amendments.map((amd: Standard) => (
                 <div
                   key={amd.id}
                   className="flex items-center justify-between py-3 gap-4"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10 border border-yellow-500/20 shrink-0">
-                      <ScrollText className="h-3.5 w-3.5 text-yellow-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning-soft border border-warning-line shrink-0">
+                      <ScrollText className="h-3.5 w-3.5 text-warning" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground">

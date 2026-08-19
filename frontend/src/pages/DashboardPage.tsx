@@ -17,44 +17,52 @@ import { StatusBadge } from "@/components/ui/badge";
 import { formatDate, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
+// One tone per tile, drawn from the accent families so the four tiles read as
+// a set. The icon plate carries the colour; the number stays foreground ink so
+// the eye lands on the value first.
+const STAT_TONES = {
+  brand: "bg-brand-soft text-brand",
+  success: "bg-success-soft text-success",
+  info: "bg-info-soft text-info",
+  violet: "bg-violet-soft text-violet",
+} as const;
+
 function StatCard({
   label,
   value,
   icon: Icon,
-  color,
+  tone,
   sub,
 }: {
   label: string;
   value: number | undefined;
   icon: React.ComponentType<{ className?: string }>;
-  color: string;
+  tone: keyof typeof STAT_TONES;
   sub?: string;
 }) {
   return (
-    <Card className="relative overflow-hidden transition-transform duration-200 hover:scale-[1.02]">
+    <Card>
       <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
               {label}
             </p>
-            <p className="mt-2 text-3xl font-bold text-foreground">
+            <p className="tabular mt-2 text-[28px] font-semibold leading-none tracking-tight text-foreground">
               {value === undefined ? (
-                <span className="inline-block"><Skeleton className="h-8 w-16 inline-block" /></span>
+                <Skeleton className="inline-block h-7 w-16 align-middle" />
               ) : (
                 value.toLocaleString()
               )}
             </p>
-            {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+            {sub && <p className="mt-2 text-xs text-muted-foreground">{sub}</p>}
           </div>
           <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl ${color}`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}
           >
-            <Icon className="h-6 w-6" />
+            <Icon className="h-5 w-5" />
           </div>
         </div>
-        {/* Gradient accent line at bottom */}
-        <div className={`absolute bottom-0 left-0 h-0.5 w-full opacity-60 ${color.replace("bg-", "bg-gradient-to-r from-")}`} />
       </CardContent>
     </Card>
   );
@@ -85,9 +93,9 @@ export function DashboardPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
             Good morning,{" "}
-            <span className="gradient-text">
+            <span className="text-brand">
               {user?.full_name?.split(" ")[0] ?? "Admin"}
             </span>
           </h1>
@@ -95,8 +103,8 @@ export function DashboardPage() {
             Here's what's happening with your ISO standards library today.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 bg-foreground/4">
-          <Activity className="h-3.5 w-3.5 text-teal-400" />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 bg-muted">
+          <Activity className="h-3.5 w-3.5 text-success" />
           <span>Live monitoring active</span>
         </div>
       </div>
@@ -107,27 +115,28 @@ export function DashboardPage() {
           label="Total Standards"
           value={stats?.total_standards}
           icon={BookOpen}
-          color="bg-indigo-600/20 text-indigo-400"
+          tone="brand"
           sub={`${stats?.active_standards ?? "—"} active`}
         />
         <StatCard
           label="Purchased"
           value={stats?.purchased_standards}
           icon={ShoppingCart}
-          color="bg-teal-600/20 text-teal-400"
+          tone="success"
+          sub="all editions owned"
         />
         <StatCard
           label="Active Feeds"
           value={stats?.enabled_feeds}
           icon={Rss}
-          color="bg-blue-600/20 text-blue-400"
+          tone="info"
           sub={`${stats?.total_feeds ?? "—"} total configured`}
         />
         <StatCard
           label="Events (7 days)"
           value={stats?.events_last_7_days}
           icon={TrendingUp}
-          color="bg-purple-600/20 text-purple-400"
+          tone="violet"
         />
       </div>
 
@@ -138,12 +147,12 @@ export function DashboardPage() {
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4 text-indigo-400" />
+                <Zap className="h-4 w-4 text-brand" />
                 Recently Updated Standards
               </CardTitle>
               <a
                 href="/standards"
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                className="text-xs font-medium text-brand hover:underline underline-offset-4 transition-colors"
               >
                 View all →
               </a>
@@ -151,14 +160,14 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0">
             {recentStandards ? (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {recentStandards.items.map((std) => (
                   <a
                     key={std.id}
                     href={`/standards/${std.id}`}
-                    className="flex items-center gap-4 px-6 py-3.5 hover:bg-foreground/4 transition-colors group"
+                    className="flex items-center gap-4 px-6 py-3.5 hover:bg-muted transition-colors group"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground/4 text-xs font-bold text-indigo-300 group-hover:border-indigo-500/30 transition-colors">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-xs font-bold text-brand group-hover:border-brand-line transition-colors">
                       {std.iso_reference.replace(/[^A-Z/]/g, "").slice(0, 3)}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -169,7 +178,7 @@ export function DashboardPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <StatusBadge status={std.status} />
-                      <p className="text-[10px] text-muted-foreground/60">
+                      <p className="text-[10px] text-subtle-foreground">
                         {timeAgo(std.updated_at)}
                       </p>
                     </div>
@@ -177,7 +186,7 @@ export function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-4 px-6 py-3.5">
                     <Skeleton className="h-9 w-9 rounded-lg" />
@@ -198,23 +207,29 @@ export function DashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-teal-400" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
                 Library Health
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Each row carries its own denominator and prints it, so neither
+                  percentage is read against the wrong population: Active is a
+                  share of the standards the library lists, Purchased a share of
+                  the active ones. */}
               {[
                 {
                   label: "Active",
                   value: stats?.active_standards,
                   total: stats?.total_standards,
-                  color: "bg-teal-500",
+                  hint: "of current editions",
+                  color: "bg-success",
                 },
                 {
                   label: "Purchased",
                   value: stats?.purchased_standards,
-                  total: stats?.total_standards,
-                  color: "bg-indigo-500",
+                  total: stats?.active_standards,
+                  hint: "of active standards",
+                  color: "bg-primary",
                 },
               ].map((item) => {
                 const pct =
@@ -223,13 +238,17 @@ export function DashboardPage() {
                     : 0;
                 return (
                   <div key={item.label} className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{item.label}</span>
-                      <span className="text-foreground font-medium">
-                        {item.value ?? "—"} ({pct}%)
+                    <div className="flex items-baseline justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground">
+                        {item.label}{" "}
+                        <span className="text-subtle-foreground">{item.hint}</span>
+                      </span>
+                      <span className="tabular font-medium text-foreground">
+                        {item.value?.toLocaleString() ?? "—"} / {item.total?.toLocaleString() ?? "—"}{" "}
+                        <span className="text-muted-foreground">({pct}%)</span>
                       </span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted border border-border">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${item.color}`}
                         style={{ width: `${pct}%` }}
@@ -244,22 +263,22 @@ export function DashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Rss className="h-4 w-4 text-blue-400" />
+                <Rss className="h-4 w-4 text-info" />
                 Feed Status
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Enabled feeds</span>
-                <span className="font-medium text-teal-400">{stats?.enabled_feeds ?? "—"}</span>
+                <span className="tabular font-semibold text-success">{stats?.enabled_feeds ?? "—"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total configured</span>
-                <span className="font-medium">{stats?.total_feeds ?? "—"}</span>
+                <span className="tabular font-medium text-foreground">{stats?.total_feeds ?? "—"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Unread alerts</span>
-                <span className="font-medium text-yellow-400">
+                <span className="tabular font-semibold text-warning">
                   {stats?.unread_notifications ?? "—"}
                 </span>
               </div>
@@ -271,12 +290,12 @@ export function DashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-indigo-400" />
+                    <Activity className="h-4 w-4 text-brand" />
                     Worker Health
                   </span>
                   {workerStatus ? (
                     <div className="flex items-center gap-1.5">
-                      <span className={`h-2 w-2 rounded-full ${workerStatus.status === "online" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                      <span className={`h-2 w-2 rounded-full ${workerStatus.status === "online" ? "bg-success animate-pulse" : "bg-danger"}`} />
                       <span className="text-xs font-semibold capitalize text-foreground">{workerStatus.status}</span>
                     </div>
                   ) : (
@@ -288,7 +307,7 @@ export function DashboardPage() {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Feeds Queue</span>
                   {workerStatus ? (
-                    <span className="inline-flex items-center justify-center rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/20">
+                    <span className="inline-flex items-center justify-center rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand border border-brand-line">
                       {workerStatus.queues.feeds}
                     </span>
                   ) : (
@@ -298,7 +317,7 @@ export function DashboardPage() {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Notifications Queue</span>
                   {workerStatus ? (
-                    <span className="inline-flex items-center justify-center rounded-full bg-teal-500/10 px-2.5 py-0.5 text-xs font-semibold text-teal-400 border border-teal-500/20">
+                    <span className="inline-flex items-center justify-center rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-semibold text-success border border-success-line">
                       {workerStatus.queues.notifications}
                     </span>
                   ) : (
@@ -308,7 +327,7 @@ export function DashboardPage() {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Maintenance Queue</span>
                   {workerStatus ? (
-                    <span className="inline-flex items-center justify-center rounded-full bg-purple-500/10 px-2.5 py-0.5 text-xs font-semibold text-purple-400 border border-purple-500/20">
+                    <span className="inline-flex items-center justify-center rounded-full bg-violet-soft px-2.5 py-0.5 text-xs font-semibold text-violet border border-violet-line">
                       {workerStatus.queues.maintenance}
                     </span>
                   ) : (

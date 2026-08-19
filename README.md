@@ -87,6 +87,30 @@ Operational notes:
 
 ---
 
+## How change detection works
+
+Every poll compares the incoming feed entry against what is already stored, so only real
+changes are recorded.
+
+Each RSS entry is reduced to a SHA-256 fingerprint of its title, link, published and updated
+dates, and the first 500 characters of its description. That fingerprint is compared with the
+`content_hash` saved on the matching standard:
+
+| Comparison | Outcome |
+|---|---|
+| No standard with this reference | **new** — standard created |
+| Fingerprint matches the stored one | **skipped** — nothing changed, no history, no notification |
+| Fingerprint differs | **changed** — classified as `updated`, `amended`, `withdrawn` or `replaced` |
+
+On a change, a `standard_history` row is appended holding a full before/after snapshot, the
+standard is updated, and a notification is dispatched. History is append-only — nothing is
+overwritten, so the timeline can always be replayed.
+
+This is why a poll reporting `updated: 0` is normal rather than a failure: the feed was read
+successfully and nothing had moved since last time.
+
+---
+
 ## Configuration
 
 Settings come from three separate places, which is worth knowing before hunting for a value:

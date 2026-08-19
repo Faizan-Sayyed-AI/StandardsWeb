@@ -9,7 +9,7 @@ import uuid
 from typing import Literal
 
 import structlog
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import Integer, String, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -22,6 +22,140 @@ from app.models.standard_history import StandardHistory
 from app.schemas.standard import StandardCreate, StandardGrouped, StandardListItem, StandardVersion
 
 log = structlog.get_logger(__name__)
+
+
+def _edition_year_sql(entity=Standard):
+    """
+    The edition's year, used to order the versions of one standard.
+
+    `published_date` cannot do this job: it holds the date of the last stage
+    change the feed reported, not the date the edition was published. So a
+    withdrawn 2018 edition and the live 2025 edition that replaced it both carry
+    the withdrawal date and tie — after which ordering fell to the random UUID
+    tie-break, which is why the current edition was often not the row shown
+    first. 2,497 rows in production disagree with their own edition year.
+
+    The edition is carried by `edition` ("2025") or by the year in the reference
+    ("ISO 10993-1:2025"). For an amendment such as "ISO 9001:2015/AMD 1:2024" the
+    first year is the base edition's, which is what groups it with 2015.
+    """
+    return func.coalesce(
+        cast(
+            func.nullif(
+                func.substring(func.coalesce(entity.edition, ""), r"(\d{4})"), ""
+            ),
+            Integer,
+        ),
+        cast(
+            func.nullif(func.substring(entity.iso_reference, r":(\d{4})"), ""), Integer
+        ),
+    )
+
+
+def _is_amendment_sql(entity=Standard):
+    """
+    1 for amendment/corrigendum rows, so a base edition sorts above its own
+    amendments instead of being pushed below them.
+
+    Anchored on ":<year>/" because AMD/COR only ever appear as a suffix
+    ("ISO 4287:1997/AMD 1:2009"), while a bare "/" also introduces designation
+    prefixes that are not amendments at all ("ISO/TS 6892-5", "ISO/CD 12111").
+    """
+    return case(
+        (entity.iso_reference.op("~")(r":\d{4}/(AMD|COR|DAMD)"), 1),
+        else_=0,
+    )
+
+
+def _version_order_sql(entity=Standard):
+    """
+    Newest edition first, then back through the previous editions.
+
+    Ordering key, in priority order:
+      1. edition year, descending (rows with no year sort last)
+      2. base edition before its own amendments/corrigenda
+      3. last stage change, descending — separates two rows of the same edition
+      4. id — a stable tie-break so pagination does not shuffle between requests
+    """
+    return (
+        _edition_year_sql(entity).desc().nulls_last(),
+        _is_amendment_sql(entity).asc(),
+        entity.published_date.desc().nulls_last(),
+        entity.id,
+    )
+
+
+def _has_edition_sql(entity=Standard):
+    """
+    True when the row carries an edition — i.e. the list's Edition column would
+    show a value rather than "—".
+
+    Treats NULL, "" and whitespace alike so a blank imported edition counts as
+    missing, not as present.
+    """
+    return func.nullif(func.btrim(func.coalesce(entity.edition, "")), "").isnot(None)
+
+
+def _group_key_sql():
+    """
+    The value that identifies one version group.
+
+    Rows with no base_reference are each their own singleton group keyed by id.
+    nullif(base_reference, '') folds an empty string into the NULL case, so a
+    blank base_reference (e.g. from a backfill/import) yields a singleton group
+    instead of collapsing every such row into one shared '' group.
+    """
+    return func.coalesce(
+        func.nullif(Standard.base_reference, ""), cast(Standard.id, String)
+    )
+
+
+def _group_primaries_subquery():
+    """
+    One row per version group — the group's newest edition.
+
+    DISTINCT ON keeps the first row per group under this ORDER BY, so the
+    version ordering is what decides which edition represents the group.
+    Shared by the library list and the dashboard KPIs so the two never drift
+    apart on what counts as a standard.
+    """
+    group_key = _group_key_sql()
+    return (
+        select(Standard)
+        .where(Standard.parent_standard_id.is_(None))
+        .distinct(group_key)
+        .order_by(group_key, *_version_order_sql(Standard))
+        .subquery("group_primaries")
+    )
+
+
+def _in_default_library_sql(entity):
+    """
+    Whether a group's parent belongs in the default library view.
+
+    A parent qualifies by carrying an edition, or by having been purchased —
+    a standard the organisation owns is never hidden for want of an edition.
+    Many ASTM/IEC/ANSI designations carry no year at all, so the edition rule
+    alone hid 27 purchased standards.
+    """
+    return or_(_has_edition_sql(entity), entity.is_purchased.is_(True))
+
+
+def library_parents_subquery(*, require_edition: bool = True):
+    """
+    The standards the library list shows by default: one row per version group,
+    keeping groups whose parent has an edition or is purchased.
+
+    Exposed so the dashboard KPIs count the same population the Standards page
+    displays — a flat COUNT(*) over `standards` counts every historical edition
+    and every amendment row, which is why the KPI used to read far higher than
+    the list.
+    """
+    primary = aliased(Standard, _group_primaries_subquery())
+    query = select(primary)
+    if require_edition:
+        query = query.where(_in_default_library_sql(primary))
+    return query.subquery("library_parents")
 
 
 def _stage_matches_sql(stage_filter: str, entity=Standard):
@@ -51,6 +185,7 @@ async def list_standards(
     standards_body: str | None = None,
     stage: str | None = None,
     is_purchased: bool | None = None,
+    require_edition: bool = False,
     sort_by: str = "updated_at",
     sort_order: Literal["asc", "desc"] = "desc",
 ) -> tuple[list[Standard], int]:
@@ -64,6 +199,7 @@ async def list_standards(
         standards_body: Exact match on standards_body field.
         stage:        Exact stage_code match, or a ".x" phase prefix (e.g. "20.x").
         is_purchased: Filter by purchase flag.
+        require_edition: Drop rows whose edition is blank.
         sort_by:      Column name — one of: iso_reference, title, updated_at, status.
         sort_order:   'asc' or 'desc'.
 
@@ -99,6 +235,9 @@ async def list_standards(
         conditions.append(_stage_matches_sql(stage))
     if is_purchased is not None:
         conditions.append(Standard.is_purchased == is_purchased)
+    if require_edition:
+        # The flat list has no grouping, so there is no hierarchy to spare.
+        conditions.append(_in_default_library_sql(Standard))
 
     if conditions:
         from sqlalchemy import and_
@@ -147,6 +286,7 @@ async def get_grouped_standards(
     standards_body: str | None = None,
     stage: str | None = None,
     is_purchased: bool | None = None,
+    require_edition: bool = False,
     sort_by: str = "updated_at",
     sort_order: Literal["asc", "desc"] = "desc",
 ) -> tuple[list[StandardGrouped], int]:
@@ -166,21 +306,7 @@ async def get_grouped_standards(
     over those primaries, and one second bounded query fetches the page's other
     versions. The table is never fully loaded into memory.
     """
-    # Rows with no base_reference are each their own singleton group keyed by id.
-    # nullif(base_reference, '') folds an empty string into the NULL case, so a
-    # blank base_reference (e.g. from a backfill/import) yields a singleton group
-    # instead of collapsing every such row into one shared '' group.
-    group_key = func.coalesce(
-        func.nullif(Standard.base_reference, ""), cast(Standard.id, String)
-    )
-    primary_sq = (
-        select(Standard)
-        .where(Standard.parent_standard_id.is_(None))
-        .distinct(group_key)
-        .order_by(group_key, Standard.published_date.desc().nulls_last(), Standard.id)
-        .subquery("group_primaries")
-    )
-    primary = aliased(Standard, primary_sq)
+    primary = aliased(Standard, _group_primaries_subquery())
 
     conditions = []
     if search:
@@ -206,7 +332,38 @@ async def get_grouped_standards(
     if stage:
         conditions.append(_stage_matches_sql(stage, primary))
     if is_purchased is not None:
-        conditions.append(primary.is_purchased == is_purchased)
+        # Purchase is a property of one edition, not of the family, so this
+        # filter asks whether ANY member of the group is purchased rather than
+        # just its parent. Applied to the parent alone it hid every purchase
+        # made against a superseded edition — 17 purchased standards were
+        # unreachable through this filter.
+        member = aliased(Standard)
+        group_has_purchase = (
+            select(1)
+            .where(
+                func.coalesce(
+                    func.nullif(member.base_reference, ""), cast(member.id, String)
+                )
+                == func.coalesce(
+                    func.nullif(primary.base_reference, ""), cast(primary.id, String)
+                ),
+                member.parent_standard_id.is_(None),
+                member.is_purchased.is_(True),
+            )
+            .exists()
+        )
+        conditions.append(group_has_purchase if is_purchased else ~group_has_purchase)
+    if require_edition:
+        # The parent must carry an edition or be purchased, whether or not it
+        # heads a version hierarchy.
+        #
+        # No editions become unreachable this way: _version_order_sql sorts rows
+        # without a year last, so a parent lacks an edition only when no member
+        # of its group has one, and no purchased row sits inside a group this
+        # hides. Child rows are never filtered — the versions query below
+        # deliberately rides along unfiltered, so an expanded hierarchy still
+        # shows every edition it contains.
+        conditions.append(_in_default_library_sql(primary))
 
     query = select(primary)
     if conditions:
@@ -250,7 +407,7 @@ async def get_grouped_standards(
                 Standard.parent_standard_id.is_(None),
                 Standard.base_reference.in_(group_refs),
             )
-            .order_by(Standard.published_date.desc().nulls_last(), Standard.id)
+            .order_by(*_version_order_sql(Standard))
         )
         for member in members_result.scalars():
             versions_map.setdefault(member.base_reference, []).append(member)

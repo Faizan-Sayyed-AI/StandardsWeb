@@ -66,9 +66,9 @@ export function NotificationBell() {
 
   const severityColor = (severity: string) => {
     switch (severity) {
-      case "critical": return "border-red-500/20 bg-red-500/10";
-      case "warning": return "border-yellow-500/20 bg-yellow-500/10";
-      default: return "border-border bg-foreground/4";
+      case "critical": return "border-danger-line bg-danger-soft";
+      case "warning": return "border-warning-line bg-warning-soft";
+      default: return "border-border bg-muted";
     }
   };
 
@@ -79,13 +79,13 @@ export function NotificationBell() {
         className={cn(
           "relative flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-200",
           open
-            ? "border-indigo-500/30 bg-indigo-600/20 text-indigo-300"
+            ? "border-brand-line bg-brand-soft text-brand"
             : "border-border bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-foreground/8"
         )}
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[9px] font-bold text-white pulse-ring">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground pulse-ring">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -143,7 +143,7 @@ export function NotificationBell() {
                     >
                       <div className="flex items-start gap-2">
                         {!n.is_read && (
-                          <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
+                          <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                         )}
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-foreground leading-tight">
@@ -152,7 +152,7 @@ export function NotificationBell() {
                           <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
                             {n.body}
                           </p>
-                          <p className="mt-1 text-[10px] text-muted-foreground/60">
+                          <p className="mt-1 text-[10px] text-subtle-foreground">
                             {timeAgo(n.created_at)}
                           </p>
                         </div>
@@ -162,7 +162,7 @@ export function NotificationBell() {
                 </div>
               ) : (
                 <div className="px-4 py-8 text-center">
-                  <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <Bell className="h-8 w-8 text-subtle-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">All caught up!</p>
                 </div>
               )}

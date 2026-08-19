@@ -77,6 +77,8 @@ export interface StandardsListParams {
   standards_body?: string;
   stage?: string;
   is_purchased?: boolean;
+  /** Hide standards with no edition (a hierarchy head is kept regardless). */
+  require_edition?: boolean;
   sort_by?: string;
   sort_order?: "asc" | "desc";
   grouped?: boolean;

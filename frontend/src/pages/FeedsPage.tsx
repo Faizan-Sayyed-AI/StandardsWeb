@@ -184,8 +184,8 @@ export function FeedsPage() {
 
   const PollStatusIcon = ({ status }: { status: string }) => {
     switch (status) {
-      case "ok": return <CheckCircle className="h-4 w-4 text-teal-400" />;
-      case "failed": return <XCircle className="h-4 w-4 text-red-400" />;
+      case "ok": return <CheckCircle className="h-4 w-4 text-success" />;
+      case "failed": return <XCircle className="h-4 w-4 text-danger" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
@@ -196,7 +196,7 @@ export function FeedsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Rss className="h-6 w-6 text-blue-400" />
+            <Rss className="h-6 w-6 text-info" />
             Feed Management
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -253,7 +253,7 @@ export function FeedsPage() {
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <PollStatusIcon status={feed.last_poll_status} />
-                        <span className={`text-xs ${feed.is_enabled ? "text-teal-400" : "text-muted-foreground"}`}>
+                        <span className={`text-xs ${feed.is_enabled ? "text-success" : "text-muted-foreground"}`}>
                           {feed.is_enabled ? "Active" : "Disabled"}
                         </span>
                       </div>
@@ -261,8 +261,8 @@ export function FeedsPage() {
                         <div
                           className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium animate-in fade-in ${
                             justFetched[feed.id] === "ok"
-                              ? "bg-teal-500/15 text-teal-300 border border-teal-500/30"
-                              : "bg-red-500/15 text-red-300 border border-red-500/30"
+                              ? "bg-success-soft text-success border border-success-line"
+                              : "bg-danger-soft text-danger border border-danger-line"
                           }`}
                         >
                           {justFetched[feed.id] === "ok" ? (
@@ -277,7 +277,7 @@ export function FeedsPage() {
                     <TableCell>
                       <span className="text-xs text-muted-foreground">
                         {pollingFeed === feed.id ? (
-                          <span className="inline-flex items-center gap-1 text-indigo-300">
+                          <span className="inline-flex items-center gap-1 text-brand">
                             <Loader2 className="h-3 w-3 animate-spin" /> Fetching…
                           </span>
                         ) : feed.last_polled_at ? (
@@ -288,7 +288,7 @@ export function FeedsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className={`text-xs font-mono font-semibold ${feed.failure_count > 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                      <span className={`text-xs font-mono font-semibold ${feed.failure_count > 0 ? "text-danger" : "text-muted-foreground"}`}>
                         {feed.failure_count}
                       </span>
                     </TableCell>
@@ -301,7 +301,7 @@ export function FeedsPage() {
                           title="Poll now"
                           disabled={pollingFeed === feed.id}
                           onClick={() => handlePoll(feed.id, feed)}
-                          className="h-7 w-7 text-muted-foreground hover:text-teal-400"
+                          className="h-7 w-7 text-muted-foreground hover:text-success"
                         >
                           {pollingFeed === feed.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -318,7 +318,7 @@ export function FeedsPage() {
                           onClick={() =>
                             toggleMutation.mutate({ id: feed.id, enabled: !feed.is_enabled })
                           }
-                          className="h-7 w-7 text-muted-foreground hover:text-indigo-400"
+                          className="h-7 w-7 text-muted-foreground hover:text-brand"
                         >
                           <ToggleRight className="h-3.5 w-3.5" />
                         </Button>
@@ -333,7 +333,7 @@ export function FeedsPage() {
                               deleteMutation.mutate(feed.id);
                             }
                           }}
-                          className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                          className="h-7 w-7 text-muted-foreground hover:text-danger"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -362,7 +362,7 @@ export function FeedsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Rss className="h-5 w-5 text-blue-400" />
+              <Rss className="h-5 w-5 text-info" />
               Add RSS Feed
             </DialogTitle>
             <DialogDescription>
@@ -371,7 +371,7 @@ export function FeedsPage() {
           </DialogHeader>
 
           {formError && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+            <div className="rounded-lg border border-danger-line bg-danger-soft px-4 py-2 text-sm text-danger">
               {formError}
             </div>
           )}
@@ -428,8 +428,8 @@ export function FeedsPage() {
                     onClick={() => setForm((f) => ({ ...f, schedule_type: type }))}
                     className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
                       form.schedule_type === type
-                        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-border text-muted-foreground hover:border-foreground/20"
+                        ? "border-brand-line bg-brand-soft text-brand"
+                        : "border-border text-muted-foreground hover:border-border-strong"
                     }`}
                   >
                     {type.charAt(0).toUpperCase() + type.slice(1)}

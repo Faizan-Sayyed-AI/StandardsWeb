@@ -38,7 +38,6 @@ const STAGE_OPTIONS = [
 
 const SORT_OPTIONS = [
   { value: "published_date", label: "Stage Date" },
-  { value: "updated_at", label: "Last updated" },
   { value: "iso_reference", label: "ISO Reference" },
   { value: "title", label: "Title" },
   { value: "status", label: "Status" },
@@ -82,6 +81,12 @@ export function StandardsPage() {
   const committeeFilter = qp("committee");
   const stageFilter = qp("stage");
   const standardsBodyFilter = qp("body");
+  // Standards with no edition are hidden by default — they are mostly
+  // pre-publication drafts that clutter the library. That includes the parent
+  // of a version hierarchy: if it has no edition, the whole group is hidden.
+  // Child rows are never filtered, so an expanded hierarchy shows every
+  // edition it contains.
+  const viewAll = qp("all") === "1";
 
   /**
    * Merge updates into the query string. An empty string or undefined removes
@@ -147,6 +152,7 @@ export function StandardsPage() {
     tc_committee: committeeFilter || undefined,
     standards_body: standardsBodyFilter || undefined,
     stage: stageFilter || undefined,
+    require_edition: !viewAll,
   };
 
   const { data, isLoading } = useQuery({
@@ -184,17 +190,17 @@ export function StandardsPage() {
   const SortIcon = ({ col }: { col: string }) => {
     if (params.sort_by !== col) return <ChevronDown className="h-3 w-3 opacity-30" />;
     return params.sort_order === "asc" ? (
-      <ChevronUp className="h-3 w-3 text-indigo-400" />
+      <ChevronUp className="h-3 w-3 text-brand" />
     ) : (
-      <ChevronDown className="h-3 w-3 text-indigo-400" />
+      <ChevronDown className="h-3 w-3 text-brand" />
     );
   };
 
   const filterPill = (active: boolean) =>
     `rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
       active
-        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-        : "border-border text-muted-foreground hover:border-foreground/20"
+        ? "border-brand-line bg-brand-soft text-brand"
+        : "border-border text-muted-foreground hover:border-border-strong"
     }`;
 
   const totalPages = data ? Math.ceil(data.total / (params.page_size ?? 25)) : 1;
@@ -207,11 +213,13 @@ export function StandardsPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-indigo-400" />
+            <BookOpen className="h-6 w-6 text-brand" />
             Standards Library
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {data ? `${data.total.toLocaleString()} standards` : "Loading…"}
+            {data
+              ? `${data.total.toLocaleString()} standards${viewAll ? "" : " with an edition"}`
+              : "Loading…"}
           </p>
         </div>
         {canCreate && (
@@ -245,6 +253,19 @@ export function StandardsPage() {
               </button>
             )}
           </div>
+
+          <label
+            className="flex cursor-pointer select-none items-center gap-2 rounded-lg border border-border-strong bg-card px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            title="Include standards that have no edition, such as pre-publication drafts"
+          >
+            <input
+              type="checkbox"
+              checked={viewAll}
+              onChange={(e) => setQp({ all: e.target.checked ? "1" : undefined })}
+              className="h-4 w-4 cursor-pointer accent-primary"
+            />
+            View all standards
+          </label>
 
           {/* Filter toggle */}
           <Button
@@ -290,7 +311,7 @@ export function StandardsPage() {
                     onChange={(e) => {
                       setQp({ committee: e.target.value });
                     }}
-                    className="appearance-none min-w-[180px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="appearance-none min-w-[180px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-brand-line focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">All Committees</option>
                     {committees.map((c) => (
@@ -310,7 +331,7 @@ export function StandardsPage() {
                     onChange={(e) => {
                       setQp({ body: e.target.value });
                     }}
-                    className="appearance-none min-w-[140px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="appearance-none min-w-[140px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-brand-line focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">All Bodies</option>
                     {standardsBodies.map((b) => (
@@ -330,7 +351,7 @@ export function StandardsPage() {
                     onChange={(e) => {
                       setQp({ stage: e.target.value });
                     }}
-                    className="appearance-none min-w-[200px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="appearance-none min-w-[200px] cursor-pointer rounded-lg border border-input bg-background px-4 py-2 pr-8 text-sm text-foreground focus:border-brand-line focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     {STAGE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -425,14 +446,6 @@ export function StandardsPage() {
                   Stage Date <SortIcon col="published_date" />
                 </button>
               </TableHead>
-              <TableHead className="w-28 text-right">
-                <button
-                  className="flex items-center gap-1 ml-auto hover:text-foreground"
-                  onClick={() => updateSort("updated_at")}
-                >
-                  Updated <SortIcon col="updated_at" />
-                </button>
-              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -447,18 +460,17 @@ export function StandardsPage() {
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                 </TableRow>
               ))
             ) : (data?.items.length ?? 0) === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-16 text-center">
+                <TableCell colSpan={8} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
-                    <BookOpen className="h-10 w-10 text-muted-foreground/30" />
+                    <BookOpen className="h-10 w-10 text-subtle-foreground" />
                     <p className="text-sm font-medium text-muted-foreground">
                       No standards match the current filters
                     </p>
-                    <p className="text-xs text-muted-foreground/60">
+                    <p className="text-xs text-subtle-foreground">
                       Try adjusting your search or filter criteria
                     </p>
                   </div>
@@ -473,32 +485,45 @@ export function StandardsPage() {
                 const primaryRow = (
                   <TableRow
                     key={std.id}
-                    className="cursor-pointer hover:bg-foreground/4 transition-colors"
+                    className="cursor-pointer hover:bg-muted transition-colors"
                     onClick={() => navigate(`/standards/${std.id}`)}
                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {hasVersions && (
                         <button
                           onClick={() => toggleGroup(groupKey)}
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-all duration-200 ${
+                          aria-expanded={expanded}
+                          aria-label={`${expanded ? "Hide" : "Show"} ${
+                            std.versions_count - 1
+                          } earlier editions of ${std.iso_reference}`}
+                          className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
                             expanded
-                              ? "bg-indigo-500/20 text-indigo-300"
-                              : "bg-secondary text-secondary-foreground"
+                              ? "border-brand-line bg-brand-soft text-brand"
+                              : "border-border-strong bg-secondary text-muted-foreground hover:text-foreground"
                           }`}
                         >
                           {expanded ? (
-                            <ChevronDown className="h-3 w-3" />
+                            <ChevronDown className="h-3 w-3 shrink-0" />
                           ) : (
-                            <ChevronRight className="h-3 w-3" />
+                            <ChevronRight className="h-3 w-3 shrink-0" />
                           )}
-                          +{std.versions_count - 1} versions
+                          {std.versions_count - 1} earlier
                         </button>
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className="font-mono text-xs font-bold text-indigo-400 hover:underline">
-                        {std.iso_reference}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-brand hover:underline">
+                          {std.iso_reference}
+                        </span>
+                        {/* The group's newest edition — says so, so the older
+                            rows below it are unambiguous once expanded. */}
+                        {hasVersions && (
+                          <span className="shrink-0 rounded-full border border-brand-line bg-brand-soft px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-brand">
+                            Current
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-xs">
                       <p className="truncate text-foreground">{std.title}</p>
@@ -509,7 +534,7 @@ export function StandardsPage() {
                           </Badge>
                         )}
                         {std.is_purchased && (
-                          <span className="inline-flex items-center bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          <span className="inline-flex items-center bg-success-soft text-success text-[10px] px-2 py-0.5 rounded-full border border-success-line">
                             ✓ Purchased
                           </span>
                         )}
@@ -538,31 +563,31 @@ export function StandardsPage() {
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDate(std.published_date)}
                     </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {formatDate(std.updated_at)}
-                    </TableCell>
                   </TableRow>
                 );
 
                 if (!expanded) return [primaryRow];
 
+                // Newest first, then back through the previous editions — the
+                // API already returns them in that order. Depth is carried by
+                // the tinted row and the indented reference, not by glyphs.
                 const versionRows = std.versions.map((v) => (
                   <TableRow
                     key={v.id}
-                    className="cursor-pointer border-l-2 border-indigo-500/30 ml-4 bg-foreground/5 transition-all duration-200 hover:bg-foreground/8"
+                    className="cursor-pointer bg-muted/60 transition-colors hover:bg-muted"
                     onClick={() => navigate(`/standards/${v.id}`)}
                   >
-                    <TableCell />
-                    <TableCell>
-                      <span className="font-mono text-xs font-bold text-indigo-400 hover:underline">
+                    <TableCell className="py-2" />
+                    <TableCell className="py-2 pl-6">
+                      <span className="font-mono text-xs font-medium text-muted-foreground hover:text-foreground hover:underline">
                         {v.iso_reference}
                       </span>
                     </TableCell>
-                    <TableCell colSpan={2} />
-                    <TableCell>
+                    <TableCell colSpan={2} className="py-2" />
+                    <TableCell className="py-2">
                       <StatusBadge status={v.status} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       {v.stage_name ? (
                         <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
                           {v.stage_name}
@@ -571,11 +596,14 @@ export function StandardsPage() {
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell />
-                    <TableCell className="text-xs text-muted-foreground">
+                    {/* The edition is the spine of the hierarchy, so it is
+                        filled in on child rows too, not left blank. */}
+                    <TableCell className="tabular py-2 text-xs font-medium text-muted-foreground">
+                      {v.edition ?? "—"}
+                    </TableCell>
+                    <TableCell className="py-2 text-xs text-subtle-foreground">
                       {formatDate(v.published_date)}
                     </TableCell>
-                    <TableCell />
                   </TableRow>
                 ));
 
@@ -620,7 +648,7 @@ export function StandardsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-indigo-400" />
+              <BookOpen className="h-5 w-5 text-brand" />
               Add Standard
             </DialogTitle>
             <DialogDescription>
@@ -629,7 +657,7 @@ export function StandardsPage() {
           </DialogHeader>
 
           {createError && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+            <div className="rounded-lg border border-danger-line bg-danger-soft px-4 py-2 text-sm text-danger">
               {createError}
             </div>
           )}

@@ -159,7 +159,7 @@ export function DistributionListsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Mail className="h-6 w-6 text-teal-400" />
+            <Mail className="h-6 w-6 text-success" />
             Notifications & Distribution Lists
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -174,7 +174,7 @@ export function DistributionListsPage() {
           onClick={() => setActiveTab("lists")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-[2px] ${
             activeTab === "lists"
-              ? "border-teal-500 text-teal-300"
+              ? "border-success-line text-success"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -184,7 +184,7 @@ export function DistributionListsPage() {
           onClick={() => setActiveTab("mappings")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-[2px] ${
             activeTab === "mappings"
-              ? "border-teal-500 text-teal-300"
+              ? "border-success-line text-success"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -198,7 +198,7 @@ export function DistributionListsPage() {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold text-foreground">Distribution Lists</h2>
-              <Button size="sm" onClick={() => setShowCreateList(true)} className="gap-2 bg-teal-600 hover:bg-teal-700">
+              <Button size="sm" onClick={() => setShowCreateList(true)} className="gap-2 bg-success hover:bg-success">
                 <Plus className="h-4 w-4" />
                 New List
               </Button>
@@ -236,10 +236,10 @@ export function DistributionListsPage() {
                         key={list.id}
                         onClick={() => setSelectedList(list)}
                         className={`cursor-pointer transition-colors ${
-                          selectedList?.id === list.id ? "bg-teal-500/10 hover:bg-teal-500/15" : ""
+                          selectedList?.id === list.id ? "bg-success-soft hover:bg-success-soft" : ""
                         }`}
                       >
-                        <TableCell className="font-semibold text-teal-300 flex items-center gap-2">
+                        <TableCell className="font-semibold text-success flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
                           {list.name}
                         </TableCell>
@@ -258,7 +258,7 @@ export function DistributionListsPage() {
                                 deleteListMutation.mutate(list.id);
                               }
                             }}
-                            className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                            className="h-8 w-8 text-muted-foreground hover:text-danger"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -288,7 +288,7 @@ export function DistributionListsPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {memberError && (
-                      <div className="text-xs border border-red-500/20 bg-red-500/10 text-red-400 p-2 rounded">
+                      <div className="text-xs border border-danger-line bg-danger-soft text-danger p-2 rounded">
                         {memberError}
                       </div>
                     )}
@@ -316,7 +316,7 @@ export function DistributionListsPage() {
                       size="sm"
                       onClick={() => addMemberMutation.mutate({ listId: selectedList.id, email: memberEmail, name: memberName || undefined })}
                       disabled={!memberEmail || addMemberMutation.isPending}
-                      className="w-full mt-2 bg-teal-600 hover:bg-teal-700 h-9"
+                      className="w-full mt-2 bg-success hover:bg-success h-9"
                     >
                       {addMemberMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
                       Add to List
@@ -364,7 +364,7 @@ export function DistributionListsPage() {
                                   onClick={() =>
                                     removeMemberMutation.mutate({ listId: selectedList.id, email: member.email })
                                   }
-                                  className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                                  className="h-7 w-7 text-muted-foreground hover:text-danger"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -394,7 +394,7 @@ export function DistributionListsPage() {
                 setMappingListId(lists[0].id);
               }
               setShowCreateMapping(true);
-            }} disabled={!lists || lists.length === 0} className="gap-2 bg-teal-600 hover:bg-teal-700">
+            }} disabled={!lists || lists.length === 0} className="gap-2 bg-success hover:bg-success">
               <Plus className="h-4 w-4" />
               Add Mapping
             </Button>
@@ -437,12 +437,12 @@ export function DistributionListsPage() {
                       <TableCell className="text-center">
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       </TableCell>
-                      <TableCell className="font-medium text-teal-300 text-sm">
+                      <TableCell className="font-medium text-success text-sm">
                         {mapping.list_name}
                       </TableCell>
                       <TableCell className="text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          mapping.notify_all_users ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30" : "bg-foreground/5 text-muted-foreground"
+                          mapping.notify_all_users ? "bg-brand-soft text-brand border border-brand-line" : "bg-foreground/5 text-muted-foreground"
                         }`}>
                           {mapping.notify_all_users ? "Yes" : "No"}
                         </span>
@@ -456,7 +456,7 @@ export function DistributionListsPage() {
                               deleteMappingMutation.mutate(mapping.id);
                             }
                           }}
-                          className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                          className="h-8 w-8 text-muted-foreground hover:text-danger"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -479,7 +479,7 @@ export function DistributionListsPage() {
           </DialogHeader>
 
           {listError && (
-            <div className="border border-red-500/20 bg-red-500/10 text-red-400 p-3 rounded-lg text-sm">
+            <div className="border border-danger-line bg-danger-soft text-danger p-3 rounded-lg text-sm">
               {listError}
             </div>
           )}
@@ -512,7 +512,7 @@ export function DistributionListsPage() {
             <Button
               onClick={() => createListMutation.mutate({ name: listName, description: listDesc || undefined })}
               disabled={createListMutation.isPending || !listName}
-              className="bg-teal-600 hover:bg-teal-700"
+              className="bg-success hover:bg-success"
             >
               {createListMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               Create List
@@ -530,7 +530,7 @@ export function DistributionListsPage() {
           </DialogHeader>
 
           {mappingError && (
-            <div className="border border-red-500/20 bg-red-500/10 text-red-400 p-3 rounded-lg text-sm">
+            <div className="border border-danger-line bg-danger-soft text-danger p-3 rounded-lg text-sm">
               {mappingError}
             </div>
           )}
@@ -570,7 +570,7 @@ export function DistributionListsPage() {
                 id="map-notify-all"
                 checked={mappingNotifyAll}
                 onChange={(e) => setMappingNotifyAll(e.target.checked)}
-                className="h-4 w-4 rounded border-input bg-background text-teal-600 focus:ring-teal-500 focus:ring-offset-background"
+                className="h-4 w-4 rounded border-input bg-background text-success focus:ring-success focus:ring-offset-background"
               />
               <Label htmlFor="map-notify-all" className="text-sm cursor-pointer select-none">
                 Also broadcast in-app notification to all users
@@ -585,7 +585,7 @@ export function DistributionListsPage() {
             <Button
               onClick={() => createMappingMutation.mutate({ event_type: mappingEvent, list_id: mappingListId, notify_all_users: mappingNotifyAll })}
               disabled={createMappingMutation.isPending || !mappingListId}
-              className="bg-teal-600 hover:bg-teal-700"
+              className="bg-success hover:bg-success"
             >
               {createMappingMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               Save Mapping

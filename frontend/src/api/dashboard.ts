@@ -3,6 +3,7 @@ import api from "@/lib/axios";
 export interface DashboardStats {
   total_standards: number;
   active_standards: number;
+  /** Every purchased standard, including superseded editions. */
   purchased_standards: number;
   total_feeds: number;
   enabled_feeds: number;

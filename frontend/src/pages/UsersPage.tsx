@@ -89,19 +89,19 @@ export function UsersPage() {
     switch (userRole) {
       case "admin":
         return (
-          <Badge className="bg-red-500/15 border border-red-500/30 text-red-400 capitalize hover:bg-red-500/20">
+          <Badge className="bg-danger-soft border border-danger-line text-danger capitalize hover:bg-danger-soft">
             {userRole}
           </Badge>
         );
       case "manager":
         return (
-          <Badge className="bg-teal-500/15 border border-teal-500/30 text-teal-300 capitalize hover:bg-teal-500/20">
+          <Badge className="bg-success-soft border border-success-line text-success capitalize hover:bg-success-soft">
             {userRole}
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-slate-500/15 border border-slate-500/30 text-slate-400 capitalize hover:bg-slate-500/20">
+          <Badge className="bg-foreground/5 border border-border text-muted-foreground capitalize hover:bg-muted">
             {userRole}
           </Badge>
         );
@@ -114,14 +114,14 @@ export function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Users className="h-6 w-6 text-indigo-400" />
+            <Users className="h-6 w-6 text-brand" />
             User Management
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data ? `${data.total} user accounts configured` : "Loading…"}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+        <Button onClick={() => setShowCreate(true)} className="gap-2 bg-primary hover:bg-primary">
           <Plus className="h-4 w-4" />
           Create User
         </Button>
@@ -162,9 +162,9 @@ export function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        u.is_active ? "bg-teal-500/10 text-teal-400" : "bg-red-500/10 text-red-400"
+                        u.is_active ? "bg-success-soft text-success" : "bg-danger-soft text-danger"
                       }`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${u.is_active ? "bg-teal-400" : "bg-red-400"}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${u.is_active ? "bg-success" : "bg-danger"}`} />
                         {u.is_active ? "Active" : "Deactivated"}
                       </span>
                     </TableCell>
@@ -184,7 +184,7 @@ export function UsersPage() {
                           size="icon"
                           title="Edit role"
                           onClick={() => handleOpenEditRole(u)}
-                          className="h-7 w-7 text-muted-foreground hover:text-indigo-400"
+                          className="h-7 w-7 text-muted-foreground hover:text-brand"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
@@ -196,7 +196,7 @@ export function UsersPage() {
                           onClick={() => handleDeactivateToggle(u)}
                           disabled={updateMutation.isPending}
                           className={`h-7 w-7 text-muted-foreground ${
-                            u.is_active ? "hover:text-red-400" : "hover:text-teal-400"
+                            u.is_active ? "hover:text-danger" : "hover:text-success"
                           }`}
                         >
                           {u.is_active ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
@@ -226,7 +226,7 @@ export function UsersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-indigo-400" />
+              <Users className="h-5 w-5 text-brand" />
               Create User Account
             </DialogTitle>
             <DialogDescription>
@@ -235,7 +235,7 @@ export function UsersPage() {
           </DialogHeader>
 
           {formError && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+            <div className="rounded-lg border border-danger-line bg-danger-soft px-4 py-2 text-sm text-danger">
               {formError}
             </div>
           )}
@@ -279,8 +279,8 @@ export function UsersPage() {
                     onClick={() => setRole(r)}
                     className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors capitalize ${
                       role === r
-                        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-border text-muted-foreground hover:border-foreground/20"
+                        ? "border-brand-line bg-brand-soft text-brand"
+                        : "border-border text-muted-foreground hover:border-border-strong"
                     }`}
                   >
                     {r}
@@ -304,7 +304,7 @@ export function UsersPage() {
                 })
               }
               disabled={createMutation.isPending || !username || !email || !password}
-              className="gap-2 bg-indigo-600 hover:bg-indigo-700"
+              className="gap-2 bg-primary hover:bg-primary"
             >
               {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Create Account
@@ -318,7 +318,7 @@ export function UsersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-indigo-400" />
+              <Shield className="h-5 w-5 text-brand" />
               Edit User Role
             </DialogTitle>
             <DialogDescription>
@@ -336,8 +336,8 @@ export function UsersPage() {
                     onClick={() => setEditRole(r)}
                     className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors capitalize ${
                       editRole === r
-                        ? "border-indigo-500/40 bg-indigo-600/20 text-indigo-300"
-                        : "border-border text-muted-foreground hover:border-foreground/20"
+                        ? "border-brand-line bg-brand-soft text-brand"
+                        : "border-border text-muted-foreground hover:border-border-strong"
                     }`}
                   >
                     {r}
@@ -361,7 +361,7 @@ export function UsersPage() {
                 }
               }}
               disabled={updateMutation.isPending}
-              className="gap-2 bg-indigo-600 hover:bg-indigo-700"
+              className="gap-2 bg-primary hover:bg-primary"
             >
               {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Save Changes

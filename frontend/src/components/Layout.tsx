@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { LogOut, Moon, Search, Sun } from "lucide-react";
+import { LogOut, Moon, Sun } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,24 +88,15 @@ export function Layout() {
         sidebarCollapsed ? "pl-[60px]" : "pl-60"
       )}>
         {/* Top header bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-background/80 backdrop-blur-xl px-6">
-          <div>
-            <h1 className="text-sm font-semibold text-foreground">{pageTitle}</h1>
-            <p className="text-xs text-muted-foreground">
-              StandardSphere
-            </p>
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/85 backdrop-blur-xl px-6">
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold tracking-tight text-foreground">
+              {pageTitle}
+            </h1>
+            <p className="text-xs text-subtle-foreground">StandardSphere</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Global search stub */}
-            <button className="hidden sm:flex items-center gap-2 h-9 rounded-lg border border-border bg-foreground/5 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/8 transition-colors w-48">
-              <Search className="h-3.5 w-3.5 shrink-0" />
-              <span>Search standards…</span>
-              <kbd className="ml-auto text-[10px] font-mono border border-border rounded px-1">
-                ⌘K
-              </kbd>
-            </button>
-
+          <div className="flex items-center gap-1">
             <NotificationBell />
 
             <ThemeToggle />

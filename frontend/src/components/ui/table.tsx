@@ -18,7 +18,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-border", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-border bg-muted/60", className)} {...props} />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -40,7 +40,7 @@ const TableFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tfoot
     ref={ref}
-    className={cn("border-t border-border bg-foreground/4 font-medium [&>tr]:last:border-b-0", className)}
+    className={cn("border-t border-border bg-muted font-medium [&>tr]:last:border-b-0", className)}
     {...props}
   />
 ));
@@ -52,7 +52,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
       ref={ref}
       className={cn(
         "border-b border-border/60 transition-colors duration-150",
-        "hover:bg-foreground/4 data-[state=selected]:bg-indigo-600/10",
+        "hover:bg-foreground/[0.035] data-[state=selected]:bg-brand-soft",
         className
       )}
       {...props}
@@ -68,7 +68,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 px-4 text-left align-middle font-medium text-muted-foreground text-xs uppercase tracking-wider",
+      "h-10 px-4 text-left align-middle font-semibold text-subtle-foreground text-[11px] uppercase tracking-wider",
       "[&:has([role=checkbox])]:pr-0",
       className
     )}

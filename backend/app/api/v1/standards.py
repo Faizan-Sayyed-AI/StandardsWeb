@@ -54,6 +54,12 @@ async def list_standards(
         default="updated_at"
     ),
     sort_order: Literal["asc", "desc"] = Query(default="desc"),
+    require_edition: bool = Query(
+        default=False,
+        description="Hide standards with no edition. A standard that heads a "
+        "version hierarchy is kept even without one, so its editions stay "
+        "reachable. Defaults to false, i.e. return everything.",
+    ),
     grouped: bool = Query(
         default=True,
         description="Group pre-publication draft/stage variants by base reference. "
@@ -71,6 +77,7 @@ async def list_standards(
             standards_body=standards_body,
             stage=stage,
             is_purchased=is_purchased,
+            require_edition=require_edition,
             sort_by=sort_by,
             sort_order=sort_order,
         )
@@ -91,6 +98,7 @@ async def list_standards(
         standards_body=standards_body,
         stage=stage,
         is_purchased=is_purchased,
+        require_edition=require_edition,
         sort_by=sort_by,
         sort_order=sort_order,
     )

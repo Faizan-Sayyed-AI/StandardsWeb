@@ -74,14 +74,14 @@ export function AuditLogsPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Layers className="h-6 w-6 text-indigo-400" />
+            <Layers className="h-6 w-6 text-brand" />
             Audit Logs
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data ? `${data.total.toLocaleString()} immutable audit trail events` : "Loading logs…"}
           </p>
         </div>
-        <Button onClick={handleExportCsv} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+        <Button onClick={handleExportCsv} className="gap-2 bg-primary hover:bg-primary">
           <Download className="h-4 w-4" />
           Export to CSV
         </Button>
@@ -99,7 +99,7 @@ export function AuditLogsPage() {
                 placeholder="Username, email or UUID"
                 value={actor}
                 onChange={(e) => { setActor(e.target.value); setPage(1); }}
-                className="pl-8 text-xs h-9 bg-foreground/5 border-border"
+                className="pl-8 text-xs h-9"
               />
             </div>
           </div>
@@ -111,7 +111,7 @@ export function AuditLogsPage() {
               placeholder="e.g. user.created"
               value={action}
               onChange={(e) => { setAction(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-foreground/5 border-border"
+              className="text-xs h-9"
             />
           </div>
 
@@ -122,7 +122,7 @@ export function AuditLogsPage() {
               placeholder="e.g. user, standard"
               value={resourceType}
               onChange={(e) => { setResourceType(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-foreground/5 border-border"
+              className="text-xs h-9"
             />
           </div>
 
@@ -133,7 +133,7 @@ export function AuditLogsPage() {
               type="date"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-foreground/5 border-border text-muted-foreground"
+              className="text-xs h-9 text-muted-foreground"
             />
           </div>
 
@@ -144,7 +144,7 @@ export function AuditLogsPage() {
               type="date"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-              className="text-xs h-9 bg-foreground/5 border-border text-muted-foreground"
+              className="text-xs h-9 text-muted-foreground"
             />
           </div>
         </div>
@@ -183,7 +183,7 @@ export function AuditLogsPage() {
                     <>
                       <TableRow
                         key={log.id}
-                        className="cursor-pointer hover:bg-foreground/4 transition-colors"
+                        className="cursor-pointer hover:bg-muted transition-colors"
                         onClick={() => toggleRow(log.id)}
                       >
                         <TableCell className="text-center">
@@ -195,19 +195,19 @@ export function AuditLogsPage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-                            <Clock className="h-3 w-3 text-indigo-400/80" />
+                            <Clock className="h-3 w-3 text-brand" />
                             {formatDateTime(log.created_at)}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="font-mono text-xs font-semibold text-teal-300">
+                          <span className="font-mono text-xs font-semibold text-success">
                             {log.action}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-xs text-foreground font-medium">
                             {log.actor_username ?? (
-                              <span className="text-muted-foreground/60 italic flex items-center gap-1">
+                              <span className="text-subtle-foreground italic flex items-center gap-1">
                                 <Laptop className="h-3 w-3" />
                                 system
                               </span>
@@ -216,22 +216,22 @@ export function AuditLogsPage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <Database className="h-3 w-3 text-indigo-400/60" />
+                            <Database className="h-3 w-3 text-brand" />
                             {log.resource_type}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="text-xs font-mono text-muted-foreground/85">
+                          <span className="text-xs font-mono text-subtle-foreground">
                             {log.ip_address ?? "—"}
                           </span>
                         </TableCell>
                       </TableRow>
                       
                       {expandedRow === log.id && (
-                        <TableRow className="bg-foreground/4 hover:bg-foreground/4">
+                        <TableRow className="bg-muted hover:bg-muted">
                           <TableCell colSpan={6} className="px-12 py-4">
                             <div className="space-y-2">
-                              <div className="flex justify-between text-[10px] text-muted-foreground/80 uppercase font-semibold tracking-wider">
+                              <div className="flex justify-between text-[10px] text-subtle-foreground uppercase font-semibold tracking-wider">
                                 <span>Audit Metadata Context Payload</span>
                                 {log.resource_id && <span>Resource ID: {log.resource_id}</span>}
                               </div>
