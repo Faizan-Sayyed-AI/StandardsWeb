@@ -212,10 +212,13 @@ export function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Each row carries its own denominator and prints it, so neither
-                  percentage is read against the wrong population: Active is a
-                  share of the standards the library lists, Purchased a share of
-                  the active ones. */}
+              {/* Both rows are shares of total_standards — the standards the
+                  library lists — so the printed denominator is the population
+                  the numerator was actually counted over. Purchased must use
+                  purchased_current_standards for this: purchased_standards
+                  counts superseded and edition-less rows that are not in the
+                  listed library at all, so as a share of it it can exceed
+                  100%. The KPI tile above still shows that fuller count. */}
               {[
                 {
                   label: "Active",
@@ -226,15 +229,19 @@ export function DashboardPage() {
                 },
                 {
                   label: "Purchased",
-                  value: stats?.purchased_standards,
-                  total: stats?.active_standards,
-                  hint: "of active standards",
+                  value: stats?.purchased_current_standards,
+                  total: stats?.total_standards,
+                  hint: "of current editions",
                   color: "bg-primary",
                 },
               ].map((item) => {
+                // Clamped as a backstop: both rows now share their
+                // denominator's population, but a future stat wired to the
+                // wrong pair should read 100% rather than render a bar wider
+                // than its track (which overflow-hidden would silently hide).
                 const pct =
                   item.total && item.value !== undefined
-                    ? Math.round((item.value / item.total) * 100)
+                    ? Math.min(100, Math.round((item.value / item.total) * 100))
                     : 0;
                 return (
                   <div key={item.label} className="space-y-1.5">

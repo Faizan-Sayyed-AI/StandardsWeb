@@ -16,6 +16,9 @@ class DashboardStats(BaseModel):
     # Every purchased row, including superseded editions and standards with no
     # edition — this is "what we have bought", not "what is current".
     purchased_standards: int
+    # The purchased subset of total_standards above — same population, so this
+    # is the only purchase count that can be shown as a percentage of it.
+    purchased_current_standards: int
     total_feeds: int
     enabled_feeds: int
     events_last_7_days: int

@@ -26,7 +26,14 @@ async def get_dashboard_stats(user_id: uuid.UUID, db: AsyncSession) -> Dashboard
     """
     Aggregate dashboard statistics for the given authenticated user.
 
-    Queries run sequentially (all are fast indexed count queries).
+    Queries run sequentially. Most are indexed counts, but the three standard
+    counts are not: they count over `library_parents_subquery()`, whose
+    DISTINCT ON sorts by two regex extractions plus a regex match per row (see
+    standard_service._version_order_sql), so no index can serve them and each
+    is a full scan of `standards`. Fine at the current table size — a few
+    thousand rows — but if this becomes the dashboard's cost, the fix is a
+    persisted, indexed `edition_year` column populated on write rather than
+    more indexes here.
     """
     # The three standard counts share one population: the standards the library
     # list shows by default — one row per version group (its newest edition),
@@ -61,6 +68,18 @@ async def get_dashboard_stats(user_id: uuid.UUID, db: AsyncSession) -> Dashboard
     )
     purchased_standards: int = purchased_r.scalar_one()
 
+    # Purchased standards *within the listed library* — the same population as
+    # total_standards/active_standards, so it can be shown as a percentage of
+    # them. purchased_standards cannot: it counts superseded editions and
+    # edition-less rows that are not in `parents` at all, so the ratio has a
+    # numerator larger than its denominator and reads over 100%.
+    purchased_current_r = await db.execute(
+        select(func.count())
+        .select_from(parents)
+        .where(parents.c.is_purchased == True)  # noqa: E712
+    )
+    purchased_current_standards: int = purchased_current_r.scalar_one()
+
     # Total feeds
     total_feeds_r = await db.execute(select(func.count(RssFeed.id)))
     total_feeds: int = total_feeds_r.scalar_one()
@@ -93,6 +112,7 @@ async def get_dashboard_stats(user_id: uuid.UUID, db: AsyncSession) -> Dashboard
         total_standards=total_standards,
         active_standards=active_standards,
         purchased_standards=purchased_standards,
+        purchased_current_standards=purchased_current_standards,
         total_feeds=total_feeds,
         enabled_feeds=enabled_feeds,
         events_last_7_days=events_last_7_days,

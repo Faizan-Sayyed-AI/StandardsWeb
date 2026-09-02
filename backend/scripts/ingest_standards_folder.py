@@ -77,6 +77,7 @@ from app.models.document_tag import DocumentTag, DocumentTagStatus  # noqa: E402
 from app.models.standard import Standard, StandardStatus  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.services.audit_service import write_audit_log  # noqa: E402
+from app.tasks.feeds import _extract_base_reference  # noqa: E402
 
 _ALLOWED_MIME_TYPES: set[str] = {
     "application/pdf",
@@ -1455,6 +1456,13 @@ async def _find_or_create_standard(
         edition=entry.get("edition"),
         tc_committee=entry.get("tc_committee"),
         status=StandardStatus(entry.get("status") or "active"),
+        # The grouping key the Standards list and the dashboard KPIs are built
+        # on. Derived with the same helper the feed ingest and the manual-create
+        # API use, so a standard added here joins the existing family for its
+        # number instead of becoming a permanent singleton group. The column
+        # has no default and no event listener: omit it and only
+        # scripts/backfill_base_reference.py can repair it afterwards.
+        base_reference=_extract_base_reference(reference),
     )
     db.add(standard)
     await db.flush()

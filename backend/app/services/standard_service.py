@@ -92,8 +92,14 @@ def _has_edition_sql(entity=Standard):
 
     Treats NULL, "" and whitespace alike so a blank imported edition counts as
     missing, not as present.
+
+    The trim set is spelled out because Postgres' one-argument btrim() strips
+    spaces only — a tab- or newline-only edition survived it and counted as a
+    present edition (tests/test_edition_ordering.py::test_has_edition).
     """
-    return func.nullif(func.btrim(func.coalesce(entity.edition, "")), "").isnot(None)
+    return func.nullif(
+        func.btrim(func.coalesce(entity.edition, ""), " \t\r\n"), ""
+    ).isnot(None)
 
 
 def _group_key_sql():

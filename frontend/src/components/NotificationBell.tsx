@@ -80,7 +80,7 @@ export function NotificationBell() {
           "relative flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-200",
           open
             ? "border-brand-line bg-brand-soft text-brand"
-            : "border-border bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-foreground/8"
+            : "border-border bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-muted"
         )}
       >
         <Bell className="h-4 w-4" />

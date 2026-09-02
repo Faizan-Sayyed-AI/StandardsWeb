@@ -272,7 +272,7 @@ function SnapshotModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/8 hover:text-foreground transition-colors"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -574,7 +574,7 @@ function UploadModal({ standardId, onClose, onSuccess }: UploadModalProps) {
           <button
             onClick={onClose}
             disabled={isUploading}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/8 hover:text-foreground transition-colors disabled:opacity-40"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40"
           >
             <X className="h-4 w-4" />
           </button>

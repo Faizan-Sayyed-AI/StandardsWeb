@@ -12,6 +12,12 @@ services:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/scripts:/app/scripts
+      # The test suite runs in this container, which is where the app's own
+      # dependencies and DB credentials already are: `docker compose exec web
+      # pytest`. pyproject.toml comes along because it carries the pytest
+      # config (asyncio_mode, testpaths).
+      - ./backend/tests:/app/tests
+      - ./backend/pyproject.toml:/app/pyproject.toml
     environment:
       LOG_LEVEL: DEBUG
       ENVIRONMENT: development

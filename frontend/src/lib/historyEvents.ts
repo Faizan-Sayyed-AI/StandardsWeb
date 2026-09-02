@@ -6,46 +6,57 @@ export interface EventMeta {
   badgeClass: string;
 }
 
+// badgeClass follows the same <tint fill> + <hairline> + <readable text> shape
+// as badgeVariants in components/ui/badge.tsx, drawn from the same six accent
+// families so the timeline reads as part of the system. These must stay
+// tokenised: the raw values they replaced (text-emerald-400 on a 15% emerald
+// tint, text-slate-400, …) were dark-theme-only and measured under 2:1 against
+// a white card, which is the contrast failure the theme rework set out to fix.
+//
+// Eight event types onto six families means some reuse. The hue carries
+// severity, and the icon plus label carry the specific event: the two mundane
+// "something changed" entries take the neutral treatment, and the four
+// lifecycle events keep the hue badge.tsx already uses for that status.
 export const EVENT_META: Record<string, EventMeta> = {
   new: {
     icon: "✦",
     label: "Standard Discovered",
-    badgeClass: "border-emerald-500/30 bg-emerald-500/15 text-emerald-400",
+    badgeClass: "border-success-line bg-success-soft text-success",
   },
   updated: {
     icon: "↻",
     label: "Details Updated",
-    badgeClass: "border-blue-500/30 bg-blue-500/15 text-blue-400",
+    badgeClass: "border-border-strong bg-foreground/5 text-muted-foreground",
   },
   amended: {
     icon: "⊕",
     label: "Amendment Added",
-    badgeClass: "border-amber-500/30 bg-amber-500/15 text-amber-400",
+    badgeClass: "border-warning-line bg-warning-soft text-warning",
   },
   withdrawn: {
     icon: "✕",
     label: "Standard Withdrawn",
-    badgeClass: "border-red-500/30 bg-red-500/15 text-red-400",
+    badgeClass: "border-danger-line bg-danger-soft text-danger",
   },
   replaced: {
     icon: "→",
     label: "Standard Replaced",
-    badgeClass: "border-orange-500/30 bg-orange-500/15 text-orange-400",
+    badgeClass: "border-violet-line bg-violet-soft text-violet",
   },
   purchased: {
     icon: "★",
     label: "Marked as Purchased",
-    badgeClass: "border-purple-500/30 bg-purple-500/15 text-purple-400",
+    badgeClass: "border-brand-line bg-brand-soft text-brand",
   },
   status_change: {
     icon: "⟳",
     label: "Status Changed",
-    badgeClass: "border-cyan-500/30 bg-cyan-500/15 text-cyan-400",
+    badgeClass: "border-info-line bg-info-soft text-info",
   },
   default: {
     icon: "•",
     label: "Updated",
-    badgeClass: "border-slate-500/30 bg-slate-500/15 text-slate-400",
+    badgeClass: "border-border bg-foreground/5 text-muted-foreground",
   },
 };
 
