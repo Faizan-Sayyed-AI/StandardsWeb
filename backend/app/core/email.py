@@ -7,6 +7,8 @@ In M5 this will be replaced with a real aiosmtplib implementation.
 
 import structlog
 
+from app.config import settings
+
 log = structlog.get_logger(__name__)
 
 
@@ -36,7 +38,7 @@ async def send_password_reset_email(to: str, reset_token: str) -> None:
 
     M1 stub: logs the token instead of emailing it.
     """
-    reset_url = f"http://localhost:5173/reset-password?token={reset_token}"
+    reset_url = f"{settings.frontend_base_url}/reset-password?token={reset_token}"
     log.info(
         "password_reset_email_mock",
         to=to,

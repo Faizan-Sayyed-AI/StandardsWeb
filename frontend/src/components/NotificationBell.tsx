@@ -1,7 +1,8 @@
 import { Bell, CheckCheck, LogOut, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUnreadCount, listNotifications, markAllRead } from "@/api/notifications";
+import { getUnreadCount, listNotifications, markAllRead, markRead } from "@/api/notifications";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn, timeAgo } from "@/lib/utils";
@@ -11,6 +12,7 @@ export function NotificationBell() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   // Close on any click/tap outside the bell, and on Escape.
   //
@@ -61,6 +63,28 @@ export function NotificationBell() {
       qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
+
+  const markOne = useMutation({
+    mutationFn: markRead,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
+  /**
+   * Open the standard a notification is about.
+   *
+   * Navigation is not awaited on the mark-read call: the row is already read
+   * from the user's point of view the moment they click it, and making them
+   * wait on a PATCH before the page moves would feel broken on a slow link.
+   * A notification with no related standard (nothing links to a deleted one)
+   * still marks read — it just has nowhere to go.
+   */
+  const openNotification = (n: { id: string; is_read: boolean; related_standard_id: string | null }) => {
+    if (!n.is_read) markOne.mutate(n.id);
+    setOpen(false);
+    if (n.related_standard_id) navigate(`/standards/${n.related_standard_id}`);
+  };
 
   const unreadCount = count?.unread ?? 0;
 
@@ -132,10 +156,15 @@ export function NotificationBell() {
               ) : notifications && notifications.items.length > 0 ? (
                 <div className="p-2 space-y-1">
                   {notifications.items.map((n) => (
-                    <div
+                    <button
                       key={n.id}
+                      type="button"
+                      onClick={() => openNotification(n)}
                       className={cn(
-                        "rounded-lg border p-3 transition-colors",
+                        "w-full rounded-lg border p-3 text-left transition-colors",
+                        n.related_standard_id
+                          ? "cursor-pointer hover:border-border-strong"
+                          : "cursor-default",
                         !n.is_read
                           ? severityColor(n.severity)
                           : "border-transparent bg-transparent opacity-60"
@@ -157,7 +186,7 @@ export function NotificationBell() {
                           </p>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : (

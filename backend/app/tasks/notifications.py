@@ -13,6 +13,7 @@ import structlog
 import uuid
 
 from app.celery_app import celery
+from app.config import settings
 
 log = structlog.get_logger(__name__)
 
@@ -64,7 +65,7 @@ def get_notification_content(event_type: str, standard) -> tuple[str, str]:
 
 
 def render_html_template(event_title: str, event_desc: str, recipient_name: str, standard, document=None) -> str:
-    standard_url = f"http://localhost:5173/standards/{standard.id}"
+    standard_url = f"{settings.frontend_base_url}/standards/{standard.id}"
 
     doc_section = ""
     if document:
@@ -158,7 +159,7 @@ def render_html_template(event_title: str, event_desc: str, recipient_name: str,
 
 
 def render_text_template(event_title: str, event_desc: str, recipient_name: str, standard, document=None) -> str:
-    standard_url = f"http://localhost:5173/standards/{standard.id}"
+    standard_url = f"{settings.frontend_base_url}/standards/{standard.id}"
 
     doc_str = ""
     if document:

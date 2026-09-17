@@ -102,6 +102,15 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed frontend origins
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
+    # ── Frontend ──────────────────────────────────────────
+    # Public base URL of the UI. Every link the backend puts in an email is
+    # built from this — standard notifications and password resets — so if it
+    # is wrong or left at the dev default, recipients get links to their own
+    # machine. Set it per environment; there is no way to infer it from an
+    # outgoing email or a Celery task, neither of which has a request to read
+    # a Host header from.
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # ── App ───────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
@@ -122,6 +131,11 @@ class Settings(BaseSettings):
     # that state, so without this sweep the state is terminal and polling stops
     # for good once the last active key trips.
     API_KEY_RATE_LIMIT_COOLDOWN_HOURS: int = 6
+
+    @property
+    def frontend_base_url(self) -> str:
+        """FRONTEND_URL without a trailing slash, safe to join paths onto."""
+        return self.FRONTEND_URL.rstrip("/")
 
     @property
     def cors_origins_list(self) -> list[str]:
