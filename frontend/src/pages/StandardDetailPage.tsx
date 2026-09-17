@@ -1120,33 +1120,25 @@ export function StandardDetailPage() {
                     {standard.edition ? `Edition ${standard.edition}` : "No edition"}
                   </p>
                 </div>
-                <StatusBadge status={standard.status} />
                 {standard.is_purchased ? (
                   <span className="text-xs font-medium text-success border border-success-line bg-success-soft rounded-full px-2 py-0.5">
                     ✓ Purchased
                   </span>
                 ) : (
                   (isAdmin || isManager) && (
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        size="sm"
-                        onClick={handlePurchase}
-                        disabled={purchaseMutation.isPending || !standard.can_purchase}
-                        title={standard.purchase_blocked_reason ?? undefined}
-                        className="h-7 px-3 bg-success hover:bg-success text-xs gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {purchaseMutation.isPending ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          "Mark as Purchased"
-                        )}
-                      </Button>
-                      {standard.purchase_blocked_reason && (
-                        <p className="text-[11px] text-muted-foreground max-w-xs leading-snug">
-                          {standard.purchase_blocked_reason}
-                        </p>
+                    <Button
+                      size="sm"
+                      onClick={handlePurchase}
+                      disabled={purchaseMutation.isPending || !standard.can_purchase}
+                      title={standard.purchase_blocked_reason ?? undefined}
+                      className="h-7 px-3 bg-success hover:bg-success text-xs gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {purchaseMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        "Mark as Purchased"
                       )}
-                    </div>
+                    </Button>
                   )
                 )}
               </div>
@@ -1173,7 +1165,7 @@ export function StandardDetailPage() {
       </Card>
 
       {/* Meta row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { icon: Tag, label: "TC Committee", value: standard.tc_committee ?? "—" },
           {
@@ -1184,7 +1176,6 @@ export function StandardDetailPage() {
               : (standard.stage_code || standard.stage_name || "—")
           },
           { icon: Calendar, label: "Stage Date", value: formatDate(standard.published_date) },
-          { icon: Calendar, label: "Last Updated", value: formatDate(standard.updated_at) },
           {
             icon: Package,
             label: "Purchased",
@@ -1262,7 +1253,6 @@ export function StandardDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <StatusBadge status={amd.status} />
                     <Button
                       variant="ghost"
                       size="sm"

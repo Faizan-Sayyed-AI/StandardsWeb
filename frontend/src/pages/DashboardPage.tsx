@@ -13,7 +13,6 @@ import { listStandards } from "@/api/standards";
 import { getWorkerStatus } from "@/api/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/ui/badge";
 import { formatDate, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -176,12 +175,9 @@ export function DashboardPage() {
                       </p>
                       <p className="text-xs text-muted-foreground truncate">{std.title}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <StatusBadge status={std.status} />
-                      <p className="text-[10px] text-subtle-foreground">
-                        {timeAgo(std.updated_at)}
-                      </p>
-                    </div>
+                    <p className="shrink-0 text-[10px] text-subtle-foreground">
+                      {timeAgo(std.updated_at)}
+                    </p>
                   </a>
                 ))}
               </div>
@@ -194,7 +190,7 @@ export function DashboardPage() {
                       <Skeleton className="h-4 w-32" />
                       <Skeleton className="h-3 w-48" />
                     </div>
-                    <Skeleton className="h-5 w-14 rounded-full" />
+                    <Skeleton className="h-3 w-12" />
                   </div>
                 ))}
               </div>

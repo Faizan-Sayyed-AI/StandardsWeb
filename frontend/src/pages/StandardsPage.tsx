@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Badge, StatusBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -21,8 +21,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDate } from "@/lib/utils";
-
-const STATUS_OPTIONS = ["", "active", "withdrawn", "under_review", "replaced", "amended", "revised"];
 
 const STAGE_OPTIONS = [
   { label: "All Stages", value: "" },
@@ -40,7 +38,6 @@ const SORT_OPTIONS = [
   { value: "published_date", label: "Stage Date" },
   { value: "iso_reference", label: "ISO Reference" },
   { value: "title", label: "Title" },
-  { value: "status", label: "Status" },
 ];
 
 const STANDARDS_BODY_OPTIONS = ["ISO", "IEC", "IEEE", "ASTM", "Other"];
@@ -71,7 +68,6 @@ export function StandardsPage() {
     page_size: Number(qp("page_size", "25")) || 25,
     sort_by: qp("sort_by", "published_date"),
     sort_order: qp("sort_order", "desc") === "asc" ? "asc" : "desc",
-    status: qp("status") || undefined,
     is_purchased: searchParams.has("purchased")
       ? searchParams.get("purchased") === "true"
       : undefined,
@@ -282,25 +278,7 @@ export function StandardsPage() {
         {/* Expanded filters */}
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-border space-y-3">
-            {/* Row 1 — Status pills */}
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Status</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {STATUS_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() =>
-                      setQp({ status: s || undefined })
-                    }
-                    className={filterPill(params.status === (s || undefined))}
-                  >
-                    {s ? s.replace(/_/g, " ") : "All"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Row 2 — Committee dropdown | Stage dropdown | Purchased pills | Sort pills */}
+            {/* Committee dropdown | Stage dropdown | Purchased pills | Sort pills */}
             <div className="flex flex-wrap items-end gap-4">
               {/* Committee dropdown */}
               <div className="space-y-1">
@@ -428,14 +406,6 @@ export function StandardsPage() {
                 </button>
               </TableHead>
               <TableHead className="w-28">Committee</TableHead>
-              <TableHead className="w-28">
-                <button
-                  className="flex items-center gap-1 hover:text-foreground"
-                  onClick={() => updateSort("status")}
-                >
-                  Status <SortIcon col="status" />
-                </button>
-              </TableHead>
               <TableHead className="w-48">Stage</TableHead>
               <TableHead className="w-24">Edition</TableHead>
               <TableHead className="w-32">
@@ -456,7 +426,6 @@ export function StandardsPage() {
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-64" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -464,7 +433,7 @@ export function StandardsPage() {
               ))
             ) : (data?.items.length ?? 0) === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-16 text-center">
+                <TableCell colSpan={7} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <BookOpen className="h-10 w-10 text-subtle-foreground" />
                     <p className="text-sm font-medium text-muted-foreground">
@@ -546,9 +515,6 @@ export function StandardsPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={std.status} />
-                    </TableCell>
-                    <TableCell>
                       {std.stage_name ? (
                         <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
                           {std.stage_name}
@@ -584,9 +550,6 @@ export function StandardsPage() {
                       </span>
                     </TableCell>
                     <TableCell colSpan={2} className="py-2" />
-                    <TableCell className="py-2">
-                      <StatusBadge status={v.status} />
-                    </TableCell>
                     <TableCell className="py-2">
                       {v.stage_name ? (
                         <Badge variant="secondary" className="text-[10px] font-medium py-0.5 px-2 text-left leading-normal whitespace-normal">
