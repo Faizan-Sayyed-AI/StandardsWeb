@@ -7,10 +7,10 @@ operator, DISTINCT ON, and NULLS LAST ordering. A SQLite or a mock would
 happily agree with an expression that Postgres rejects, which is the one
 outcome that would make the suite worse than nothing.
 
-Nothing here writes: the ordering tests evaluate their expressions against an
-inline VALUES clause, so no table, fixture row or migration is involved and
-the suite is safe to run against any environment — including a copy of
-production.
+Nothing here commits. The ordering tests evaluate their expressions against an
+inline VALUES clause, so no table, fixture row or migration is involved at all;
+the tests that do need rows insert them and roll back. The suite is safe to run
+against any environment — including a copy of production.
 
 Run inside the API container, which already has the env for settings:
 

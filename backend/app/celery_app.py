@@ -84,7 +84,17 @@ celery.conf.update(
             "task": "app.tasks.maintenance.refresh_worker_heartbeat",
             "schedule": 60.0,
             "options": {"queue": "maintenance"},
-        }
+        },
+        # Static, not per-feed: this is what keeps `rate_limited` from being a
+        # one-way door. A rate-limited key is never used for a request and a
+        # successful request is its only other exit, so without this sweep the
+        # pool drains permanently and every feed poll is skipped. Hourly; the
+        # cooldown (API_KEY_RATE_LIMIT_COOLDOWN_HOURS) decides eligibility.
+        "recover-rate-limited-api-keys-hourly": {
+            "task": "app.tasks.maintenance.recover_rate_limited_api_keys",
+            "schedule": 3600.0,
+            "options": {"queue": "maintenance"},
+        },
     },
 
     # Queue routing

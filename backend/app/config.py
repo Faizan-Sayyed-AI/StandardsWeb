@@ -110,6 +110,19 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH: str = "60/minute"      # stricter limit for auth endpoints
     RATE_LIMIT_DEFAULT: str = "300/minute"  # general API endpoints
 
+    # ── API key pool ──────────────────────────────────────
+    # How long a key stays parked in `rate_limited` before the recovery sweep
+    # (app.tasks.maintenance.recover_rate_limited_api_keys) puts it back to
+    # active. rss2json resets its quotas daily, so this only has to be shorter
+    # than a day; 6 hours retries a few times per day, and a retry that is
+    # still too early just re-stamps last_failure_at and waits again.
+    #
+    # This must stay non-zero-ish but finite: a key in `rate_limited` is never
+    # used for a request, and a successful request is the only other way out of
+    # that state, so without this sweep the state is terminal and polling stops
+    # for good once the last active key trips.
+    API_KEY_RATE_LIMIT_COOLDOWN_HOURS: int = 6
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Return CORS_ORIGINS as a parsed list."""

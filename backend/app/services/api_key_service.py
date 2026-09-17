@@ -9,10 +9,10 @@ All mutating operations write an audit log entry.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import encrypt_secret
@@ -263,6 +263,65 @@ async def record_key_success(api_key_id: uuid.UUID, db: AsyncSession) -> None:
     key.consecutive_failures = 0
     if key.status == ApiKeyStatus.rate_limited:
         key.status = ApiKeyStatus.active
+
+
+async def recover_rate_limited_keys(
+    db: AsyncSession,
+    *,
+    cooldown: timedelta,
+) -> list[ApiKey]:
+    """
+    Return every key parked in `rate_limited` past its cooldown to `active`.
+
+    This is what stops `rate_limited` being a one-way door. A key in that state
+    is never used for a request (tasks/feeds.py skips the poll outright), and
+    record_key_success() — the only other exit — runs only after a successful
+    request, so the state can otherwise only be left by hand. In production
+    that deadlocked the whole pool: all three keys tripped, every scheduled
+    poll was skipped for weeks, and rss2json's own daily quota reset made no
+    difference because the app never asked again.
+
+    `expired` and `disabled` are deliberately excluded. An invalid credential
+    does not heal on a timer, and a key an operator switched off must stay off.
+
+    A NULL last_failure_at counts as long past: a key sitting in
+    `rate_limited` with no stamp has no cooldown that could ever elapse, which
+    is the same trap in a different shape.
+
+    Mutates and flushes; the caller commits.
+    """
+    cutoff = datetime.now(timezone.utc) - cooldown
+    result = await db.execute(
+        select(ApiKey).where(
+            ApiKey.status == ApiKeyStatus.rate_limited,
+            or_(ApiKey.last_failure_at.is_(None), ApiKey.last_failure_at <= cutoff),
+        )
+    )
+    due = list(result.scalars().all())
+    if not due:
+        return []
+
+    for key in due:
+        key.status = ApiKeyStatus.active
+
+    await db.flush()
+    await write_audit_log(
+        db,
+        action="api_key.rate_limit_recovered",
+        resource_type="api_key",
+        actor_id=None,
+        resource_id=None,
+        payload={
+            "cooldown_hours": cooldown.total_seconds() / 3600,
+            "labels": [key.label for key in due],
+        },
+    )
+    log.info(
+        "api_keys_rate_limit_recovered",
+        count=len(due),
+        labels=[key.label for key in due],
+    )
+    return due
 
 
 async def record_key_failure(
