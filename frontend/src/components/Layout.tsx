@@ -1,73 +1,18 @@
-import { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { Suspense, useState } from "react";
+import { Outlet } from "react-router-dom";
+import { LogOut, Menu, X } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { Button } from "@/components/ui/button";
+import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
-
-function ThemeToggle() {
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    const stored = localStorage.getItem("theme");
-    const dark = stored !== "light";
-    if (!dark) document.documentElement.classList.add("light");
-    return dark;
-  });
-
-  const toggle = () => {
-    setIsDark((prev) => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.remove("light");
-        localStorage.setItem("theme", "dark");
-      } else {
-        document.documentElement.classList.add("light");
-        localStorage.setItem("theme", "light");
-      }
-      return next;
-    });
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggle}
-      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="text-muted-foreground hover:text-foreground"
-    >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
-  );
-}
-
-// Map route paths to human-readable breadcrumb labels
-const routeLabels: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/standards": "Standards Library",
-  "/feeds": "Feed Management",
-  "/schedule": "Schedule Config",
-  "/users": "User Management",
-  "/admin/distribution-lists": "Distribution Lists",
-  "/admin/smtp-config": "SMTP Settings",
-  "/admin/document-tagging": "Document Tagging",
-  "/admin/audit-logs": "Audit Logs",
-};
-
-function getBreadcrumb(pathname: string): string {
-  if (routeLabels[pathname]) return routeLabels[pathname];
-  const base = "/" + pathname.split("/")[1];
-  return routeLabels[base] ?? "StandardSphere";
-}
 
 export function Layout() {
   const { logout } = useAuth();
-  const location = useLocation();
-  const pageTitle = getBreadcrumb(location.pathname);
-
+  const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
-    return localStorage.getItem("sidebar_collapsed") === "true";
+    return localStorage.getItem("sidebar_collapsed") !== "false";
   });
 
   const toggleSidebar = () => {
@@ -79,43 +24,35 @@ export function Layout() {
   };
 
   return (
-    <div  className="flex h-screen bg-background overflow-hidden">
-      <Sidebar  collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-
-      {/* Main area — left padding tracks sidebar width */}
-      <div id="rightWrapper" className={cn(
-        "flex flex-1 flex-col h-screen transition-all duration-300 ease-in-out",
-        sidebarCollapsed ? "pl-[60px]" : "pl-60"
-      )}>
-        {/* Top header bar */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/85 backdrop-blur-xl px-6">
-          <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold tracking-tight text-foreground">
-              {pageTitle}
-            </h1>
-            <p className="text-xs text-subtle-foreground">StandardSphere</p>
+    <div className="flex min-h-dvh">
+      <div className={cn("sticky top-0 hidden h-dvh shrink-0 lg:block", sidebarCollapsed ? "w-16" : "w-60")}>
+        <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b bg-card px-4 shadow-sm sm:px-6">
+          <div className="flex items-center gap-2">
+            <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}>
+              <Dialog.Trigger asChild><Button size="icon" variant="ghost" className="lg:hidden" aria-label="Open navigation"><Menu size={20} /></Button></Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 z-40 bg-foreground/35" />
+                <Dialog.Content aria-describedby={undefined} className="fixed inset-y-0 left-0 z-50 w-72 max-w-[90vw]">
+                  <Dialog.Title className="sr-only">Navigation</Dialog.Title>
+                  <Sidebar collapsed={false} onNavigate={() => setMenuOpen(false)} />
+                  <Dialog.Close asChild><Button size="icon" variant="ghost" aria-label="Close navigation" className="absolute right-2 top-3"><X size={18} /></Button></Dialog.Close>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+            <span className="text-sm font-semibold">StandardSphere</span>
           </div>
-
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <NotificationBell />
-
-            <ThemeToggle />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={logout}
-              title="Sign out"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" onClick={logout}><LogOut size={16} /><span className="ml-2">Sign out</span></Button>
           </div>
         </header>
-
-        {/* Page content */}
-        <main className="flex-1 min-h-0 overflow-y-auto p-6 animate-fade-in-up">
-          <Outlet />
+        <main className="mx-auto w-full max-w-[1920px] p-4 sm:p-6 xl:p-8">
+          <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">Loading…</p>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

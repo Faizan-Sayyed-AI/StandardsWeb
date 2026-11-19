@@ -27,7 +27,7 @@ export interface FeedCreate {
   is_enabled: boolean;
 }
 
-export interface FeedUpdate extends Partial<FeedCreate> {}
+export type FeedUpdate = Partial<FeedCreate>;
 
 export async function listFeeds(page = 1, pageSize = 20): Promise<Page<Feed>> {
   const { data } = await api.get<Page<Feed>>("/api/v1/feeds", {

@@ -1,24 +1,23 @@
+import { QueryError } from "@/components/QueryError";
+import { apiErrorMessage } from "@/lib/apiError";
+import { ConfirmationDialog, type Confirmation } from "@/components/ConfirmationDialog";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Plus, Trash2, Mail, Users, ToggleLeft, Settings, Info, Loader2, ArrowRight
+  Plus, Trash2, Users, Info, Loader2, ArrowRight
 } from "lucide-react";
 import {
   listDistributionLists,
-  createDistributionList,
-  updateDistributionList,
-  deleteDistributionList,
+  createDistributionList, deleteDistributionList,
   listMembers,
   addMember,
   removeMember,
   listTriggerMappings,
   createTriggerMapping,
   deleteTriggerMapping,
-  type DistributionList,
-  type DistributionListMember,
-  type TriggerMapping
+  type DistributionList
 } from "@/api/distributionLists";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,9 +42,10 @@ const EVENT_TYPES = [
 ];
 
 export function DistributionListsPage() {
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<"lists" | "mappings">("lists");
-  
+
   // Lists Dialogs & Form State
   const [showCreateList, setShowCreateList] = useState(false);
   const [listName, setListName] = useState("");
@@ -54,7 +54,7 @@ export function DistributionListsPage() {
 
   // Selected List for managing members
   const [selectedList, setSelectedList] = useState<DistributionList | null>(null);
-  
+
   // Add Member Form State
   const [memberEmail, setMemberEmail] = useState("");
   const [memberName, setMemberName] = useState("");
@@ -68,18 +68,18 @@ export function DistributionListsPage() {
   const [mappingError, setMappingError] = useState<string | null>(null);
 
   // Queries
-  const { data: lists, isLoading: loadingLists } = useQuery({
+  const { data: lists, isLoading: loadingLists, isError: listsFailed, refetch: retryLists } = useQuery({
     queryKey: ["distribution-lists"],
     queryFn: listDistributionLists,
   });
 
-  const { data: members, isLoading: loadingMembers } = useQuery({
+  const { data: members, isLoading: loadingMembers, isError: membersFailed, refetch: retryMembers } = useQuery({
     queryKey: ["members", selectedList?.id],
     queryFn: () => listMembers(selectedList!.id),
     enabled: !!selectedList,
   });
 
-  const { data: mappings, isLoading: loadingMappings } = useQuery({
+  const { data: mappings, isLoading: loadingMappings, isError: mappingsFailed, refetch: retryMappings } = useQuery({
     queryKey: ["trigger-mappings"],
     queryFn: listTriggerMappings,
     enabled: activeTab === "mappings",
@@ -95,8 +95,8 @@ export function DistributionListsPage() {
       setListDesc("");
       setListError(null);
     },
-    onError: (err: any) => {
-      setListError(err?.response?.data?.detail ?? "Failed to create list");
+    onError: (err: unknown) => {
+      setListError(apiErrorMessage(err, "Failed to create list"));
     }
   });
 
@@ -120,8 +120,8 @@ export function DistributionListsPage() {
       setMemberName("");
       setMemberError(null);
     },
-    onError: (err: any) => {
-      setMemberError(err?.response?.data?.detail ?? "Failed to add member");
+    onError: (err: unknown) => {
+      setMemberError(apiErrorMessage(err, "Failed to add member"));
     }
   });
 
@@ -141,8 +141,8 @@ export function DistributionListsPage() {
       setShowCreateMapping(false);
       setMappingError(null);
     },
-    onError: (err: any) => {
-      setMappingError(err?.response?.data?.detail ?? "Failed to create mapping");
+    onError: (err: unknown) => {
+      setMappingError(apiErrorMessage(err, "Failed to create mapping"));
     }
   });
 
@@ -155,40 +155,44 @@ export function DistributionListsPage() {
 
   return (
     <div className="space-y-6">
+      <ConfirmationDialog request={confirmation} onClose={() => setConfirmation(null)} />
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Mail className="h-6 w-6 text-success" />
-            Notifications & Distribution Lists
+            Distribution lists
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure email distribution groups and map system events to specific lists.
+            Configure email distribution groups and map events to lists.
           </p>
         </div>
       </div>
 
+      {listsFailed && <QueryError subject="distribution lists" onRetry={retryLists} />}
+      {activeTab === "lists" && selectedList && membersFailed && <QueryError subject="recipients" onRetry={retryMembers} />}
+      {activeTab === "mappings" && mappingsFailed && <QueryError subject="event mappings" onRetry={retryMappings} />}
       {/* Tabs */}
       <div className="flex border-b border-border gap-2">
         <button
           onClick={() => setActiveTab("lists")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-[2px] ${
             activeTab === "lists"
-              ? "border-success-line text-success"
+              ? "border-brand-line text-brand"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Distribution Lists
+          Distribution lists
         </button>
         <button
           onClick={() => setActiveTab("mappings")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-[2px] ${
             activeTab === "mappings"
-              ? "border-success-line text-success"
+              ? "border-brand-line text-brand"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Event Trigger Mappings
+          Event mappings
         </button>
       </div>
 
@@ -197,10 +201,10 @@ export function DistributionListsPage() {
           {/* List panel */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-foreground">Distribution Lists</h2>
-              <Button size="sm" onClick={() => setShowCreateList(true)} className="gap-2 bg-success hover:bg-success">
+              <h2 className="text-lg font-semibold text-foreground">Distribution lists</h2>
+              <Button size="sm" onClick={() => setShowCreateList(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
-                New List
+                New list
               </Button>
             </div>
 
@@ -208,7 +212,7 @@ export function DistributionListsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>List Name</TableHead>
+                    <TableHead>List name</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="w-24 text-center">Members</TableHead>
                     <TableHead className="w-24 text-right">Actions</TableHead>
@@ -236,12 +240,12 @@ export function DistributionListsPage() {
                         key={list.id}
                         onClick={() => setSelectedList(list)}
                         className={`cursor-pointer transition-colors ${
-                          selectedList?.id === list.id ? "bg-success-soft hover:bg-success-soft" : ""
+                          selectedList?.id === list.id ? "bg-brand-soft hover:bg-brand-soft" : ""
                         }`}
                       >
                         <TableCell className="font-semibold text-success flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          {list.name}
+                          <button className="text-left text-brand" onClick={() => setSelectedList(list)}>{list.name}</button>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {list.description ?? "No description"}
@@ -253,10 +257,15 @@ export function DistributionListsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Delete list"
                             onClick={() => {
-                              if (confirm(`Are you sure you want to delete list "${list.name}"? This deletes all members.`)) {
-                                deleteListMutation.mutate(list.id);
-                              }
+                              setConfirmation({
+                                action: "Delete list",
+                                description: `Are you sure you want to delete list "${list.name}"? This deletes all members.`,
+                                onConfirm: () => {
+                                  deleteListMutation.mutate(list.id);
+                                },
+                              });
                             }}
                             className="h-8 w-8 text-muted-foreground hover:text-danger"
                           >
@@ -283,7 +292,7 @@ export function DistributionListsPage() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-                      <Plus className="h-4 w-4" /> Add Recipient
+                      <Plus className="h-4 w-4" /> Add recipient
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -293,7 +302,7 @@ export function DistributionListsPage() {
                       </div>
                     )}
                     <div className="space-y-1">
-                      <Label htmlFor="mem-email" className="text-xs">Email Address</Label>
+                      <Label htmlFor="mem-email" className="text-xs">Email address</Label>
                       <Input
                         id="mem-email"
                         placeholder="john.doe@company.local"
@@ -316,10 +325,10 @@ export function DistributionListsPage() {
                       size="sm"
                       onClick={() => addMemberMutation.mutate({ listId: selectedList.id, email: memberEmail, name: memberName || undefined })}
                       disabled={!memberEmail || addMemberMutation.isPending}
-                      className="w-full mt-2 bg-success hover:bg-success h-9"
+                      className="w-full mt-2  h-9"
                     >
                       {addMemberMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                      Add to List
+                      Add to list
                     </Button>
                   </CardContent>
                 </Card>
@@ -328,7 +337,7 @@ export function DistributionListsPage() {
                 <Card className="max-h-[350px] overflow-y-auto">
                   <CardContent className="p-0">
                     <Table>
-                      <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableHeader className="sticky top-0 bg-gold z-10">
                         <TableRow>
                           <TableHead className="py-2 text-xs">Recipient</TableHead>
                           <TableHead className="py-2 text-right w-16"></TableHead>
@@ -361,6 +370,7 @@ export function DistributionListsPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label={`Remove ${member.email}`}
                                   onClick={() =>
                                     removeMemberMutation.mutate({ listId: selectedList.id, email: member.email })
                                   }
@@ -388,13 +398,13 @@ export function DistributionListsPage() {
       ) : (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-foreground">Event Trigger Mappings</h2>
+            <h2 className="text-lg font-semibold text-foreground">Event mappings</h2>
             <Button size="sm" onClick={() => {
               if (lists && lists.length > 0) {
                 setMappingListId(lists[0].id);
               }
               setShowCreateMapping(true);
-            }} disabled={!lists || lists.length === 0} className="gap-2 bg-success hover:bg-success">
+            }} disabled={!lists || lists.length === 0} className="gap-2">
               <Plus className="h-4 w-4" />
               Add Mapping
             </Button>
@@ -404,9 +414,9 @@ export function DistributionListsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Event Type</TableHead>
+                  <TableHead>Event type</TableHead>
                   <TableHead className="w-12 text-center"></TableHead>
-                  <TableHead>Target Distribution List</TableHead>
+                  <TableHead>Distribution list</TableHead>
                   <TableHead className="w-32 text-center">In-App Alert (All)</TableHead>
                   <TableHead className="w-24 text-right">Actions</TableHead>
                 </TableRow>
@@ -451,10 +461,15 @@ export function DistributionListsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            if (confirm(`Remove mapping for event "${mapping.event_type}"?`)) {
-                              deleteMappingMutation.mutate(mapping.id);
-                            }
+                          aria-label="Remove mapping"
+                            onClick={() => {
+                            setConfirmation({
+                              action: "Remove mapping",
+                              description: `Remove mapping for event "${mapping.event_type}"?`,
+                              onConfirm: () => {
+                                deleteMappingMutation.mutate(mapping.id);
+                              },
+                            });
                           }}
                           className="h-8 w-8 text-muted-foreground hover:text-danger"
                         >
@@ -474,7 +489,7 @@ export function DistributionListsPage() {
       <Dialog open={showCreateList} onOpenChange={setShowCreateList}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Distribution List</DialogTitle>
+            <DialogTitle>New distribution list</DialogTitle>
             <DialogDescription>Create a new group for email notifications.</DialogDescription>
           </DialogHeader>
 
@@ -486,7 +501,7 @@ export function DistributionListsPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="list-name">List Name</Label>
+              <Label htmlFor="list-name">List name</Label>
               <Input
                 id="list-name"
                 placeholder="Engineering Team"
@@ -512,10 +527,9 @@ export function DistributionListsPage() {
             <Button
               onClick={() => createListMutation.mutate({ name: listName, description: listDesc || undefined })}
               disabled={createListMutation.isPending || !listName}
-              className="bg-success hover:bg-success"
             >
               {createListMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              Create List
+              Create list
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -525,7 +539,7 @@ export function DistributionListsPage() {
       <Dialog open={showCreateMapping} onOpenChange={setShowCreateMapping}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Trigger Mapping</DialogTitle>
+            <DialogTitle>Add event mapping</DialogTitle>
             <DialogDescription>Map a system lifecycle event to a distribution list.</DialogDescription>
           </DialogHeader>
 
@@ -537,7 +551,7 @@ export function DistributionListsPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="map-event">Event Type</Label>
+              <Label htmlFor="map-event">Event type</Label>
               <select
                 id="map-event"
                 value={mappingEvent}
@@ -551,7 +565,7 @@ export function DistributionListsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="map-list">Target Distribution List</Label>
+              <Label htmlFor="map-list">Distribution list</Label>
               <select
                 id="map-list"
                 value={mappingListId}
@@ -585,7 +599,6 @@ export function DistributionListsPage() {
             <Button
               onClick={() => createMappingMutation.mutate({ event_type: mappingEvent, list_id: mappingListId, notify_all_users: mappingNotifyAll })}
               disabled={createMappingMutation.isPending || !mappingListId}
-              className="bg-success hover:bg-success"
             >
               {createMappingMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               Save Mapping

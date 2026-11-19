@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -7,15 +8,19 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
-import { StandardsPage } from "@/pages/StandardsPage";
-import { StandardDetailPage } from "@/pages/StandardDetailPage";
-import { FeedsPage } from "@/pages/FeedsPage";
 import { SchedulePage } from "@/pages/SchedulePage";
-import { DistributionListsPage } from "@/pages/DistributionListsPage";
 import { SMTPConfigPage } from "@/pages/SMTPConfigPage";
 import { DocumentTaggingConfigPage } from "@/pages/DocumentTaggingConfigPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { AuditLogsPage } from "@/pages/AuditLogsPage";
+
+const StandardDetailPage = lazy(() => import("@/pages/StandardDetailPage").then(module => ({ default: module.StandardDetailPage })));
+
+const StandardsPage = lazy(() => import("@/pages/StandardsPage").then(module => ({ default: module.StandardsPage })));
+
+const DistributionListsPage = lazy(() => import("@/pages/DistributionListsPage").then(module => ({ default: module.DistributionListsPage })));
+
+const FeedsPage = lazy(() => import("@/pages/FeedsPage").then(module => ({ default: module.FeedsPage })));
 
 // Layout route: ProtectedRoute + Layout together as the parent route element
 function ProtectedLayout() {

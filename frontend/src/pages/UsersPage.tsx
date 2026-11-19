@@ -1,9 +1,12 @@
+import { QueryError } from "@/components/QueryError";
+import { apiErrorMessage } from "@/lib/apiError";
+import { ConfirmationDialog, type Confirmation } from "@/components/ConfirmationDialog";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Users, Plus, Loader2, UserCheck, UserX, Shield, Edit2, ShieldAlert
+  Users, Plus, Loader2, UserCheck, UserX, Shield, Edit2
 } from "lucide-react";
-import { listUsers, createUser, updateUser, type User } from "@/api/users";
+import { listUsers, createUser, updateUser, type User, type UserUpdatePayload } from "@/api/users";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
 
 export function UsersPage() {
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
@@ -34,7 +38,7 @@ export function UsersPage() {
   const [editRole, setEditRole] = useState<"admin" | "manager" | "viewer">("viewer");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["users", page],
     queryFn: () => listUsers(page, 20),
   });
@@ -50,31 +54,32 @@ export function UsersPage() {
       setRole("viewer");
       setFormError(null);
     },
-    onError: (err: any) => {
-      setFormError(err?.response?.data?.detail ?? "Failed to create user");
+    onError: (err: unknown) => {
+      setFormError(apiErrorMessage(err, "Failed to create user"));
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) => updateUser(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: UserUpdatePayload }) => updateUser(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       setShowEditRole(false);
       setSelectedUser(null);
     },
-    onError: (err: any) => {
-      alert(err?.response?.data?.detail ?? "Failed to update user");
-    },
   });
 
   const handleDeactivateToggle = (user: User) => {
     const action = user.is_active ? "deactivate" : "reactivate";
-    if (confirm(`Are you sure you want to ${action} user "${user.username}"?`)) {
-      updateMutation.mutate({
-        id: user.id,
-        payload: { is_active: !user.is_active },
-      });
-    }
+    setConfirmation({
+      action: action === "deactivate" ? "Deactivate account" : "Reactivate account",
+      description: `Are you sure you want to ${action} user "${user.username}"?`,
+      onConfirm: () => {
+        updateMutation.mutate({
+          id: user.id,
+          payload: { is_active: !user.is_active },
+        });
+      },
+    });
   };
 
   const handleOpenEditRole = (user: User) => {
@@ -108,22 +113,25 @@ export function UsersPage() {
     }
   };
 
+  if (isError && !data) return <QueryError subject="users" onRetry={refetch} />;
+
   return (
     <div className="space-y-6">
+      <ConfirmationDialog request={confirmation} onClose={() => setConfirmation(null)} />
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Users className="h-6 w-6 text-brand" />
-            User Management
+            Users
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data ? `${data.total} user accounts configured` : "Loading…"}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2 bg-primary hover:bg-primary">
+        <Button onClick={() => setShowCreate(true)} className="gap-2 ">
           <Plus className="h-4 w-4" />
-          Create User
+          Create user
         </Button>
       </div>
 
@@ -178,7 +186,7 @@ export function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        {/* Edit Role */}
+                        {/* Edit role */}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -221,13 +229,13 @@ export function UsersPage() {
         )}
       </Card>
 
-      {/* Create User Dialog */}
+      {/* Create user Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-brand" />
-              Create User Account
+              Create user
             </DialogTitle>
             <DialogDescription>
               Add a new user to the Standards tracking system library.
@@ -251,7 +259,7 @@ export function UsersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="create-email">Email Address</Label>
+              <Label htmlFor="create-email">Email address</Label>
               <Input
                 id="create-email"
                 type="email"
@@ -304,16 +312,16 @@ export function UsersPage() {
                 })
               }
               disabled={createMutation.isPending || !username || !email || !password}
-              className="gap-2 bg-primary hover:bg-primary"
+              className="gap-2 "
             >
               {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create Account
+              Create account
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Role Dialog */}
+      {/* Edit role Dialog */}
       <Dialog open={showEditRole} onOpenChange={setShowEditRole}>
         <DialogContent>
           <DialogHeader>
@@ -361,7 +369,7 @@ export function UsersPage() {
                 }
               }}
               disabled={updateMutation.isPending}
-              className="gap-2 bg-primary hover:bg-primary"
+              className="gap-2 "
             >
               {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Save Changes

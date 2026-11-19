@@ -9,23 +9,23 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm active:scale-[0.98]",
+          "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm enabled:hover:shadow-md active:shadow-sm",
         destructive:
-          "bg-danger-soft text-danger border border-danger-line hover:bg-danger hover:text-primary-foreground hover:border-transparent active:scale-[0.98]",
+          "bg-danger-soft text-danger border border-danger-line hover:bg-danger hover:text-primary-foreground hover:border-transparent",
         outline:
-          "border border-border-strong bg-card text-foreground shadow-sm hover:bg-muted active:scale-[0.98]",
+          "border border-border-strong bg-card text-foreground shadow-sm hover:bg-muted",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-foreground/10 active:scale-[0.98]",
-        ghost: "text-foreground hover:bg-muted active:scale-[0.98]",
+          "bg-secondary text-secondary-foreground hover:bg-foreground/10",
+        ghost: "text-foreground hover:bg-muted",
         link: "text-brand underline-offset-4 hover:underline p-0 h-auto",
         success:
-          "bg-success-soft text-success border border-success-line hover:bg-success hover:text-primary-foreground hover:border-transparent active:scale-[0.98]",
+          "bg-success-soft text-success border border-success-line hover:bg-success hover:text-primary-foreground hover:border-transparent",
       },
       size: {
-        default: "h-9 px-4 py-2",
+        default: "h-10 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-11 rounded-md px-8 text-base",
-        icon: "h-9 w-9",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {
@@ -51,4 +51,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
-export { Button, buttonVariants };
+export { Button };

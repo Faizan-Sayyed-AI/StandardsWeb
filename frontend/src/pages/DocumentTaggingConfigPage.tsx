@@ -1,43 +1,39 @@
-import { useState, useEffect } from "react";
+import { QueryError } from "@/components/QueryError";
+import { apiErrorMessage } from "@/lib/apiError";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tag, Save, Loader2, Info } from "lucide-react";
-import { getDocumentTaggingConfig, updateDocumentTaggingConfig } from "@/api/documentTagging";
+import { Save, Loader2, Info } from "lucide-react";
+import { getDocumentTaggingConfig, updateDocumentTaggingConfig, type DocumentTaggingConfig } from "@/api/documentTagging";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function DocumentTaggingConfigPage() {
+  const { data, isError, refetch } = useQuery({ queryKey: ["document-tagging-config"], queryFn: getDocumentTaggingConfig });
+  if (isError && !data) return <QueryError subject="settings" onRetry={refetch} />;
+  if (!data) return <p role="status">Loading settings…</p>;
+  return <SettingsForm config={data} />;
+}
+
+function SettingsForm({ config }: { config: DocumentTaggingConfig }) {
   const qc = useQueryClient();
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(config.DOCUMENT_TAGGING_URL);
   const [apiKey, setApiKey] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  const { data: config, isLoading } = useQuery({
-    queryKey: ["document-tagging-config"],
-    queryFn: getDocumentTaggingConfig,
-  });
-
-  // API key is intentionally excluded here — see SMTPConfigPage.tsx for why
-  // preloading a masked secret into an editable field is unsafe.
-  useEffect(() => {
-    if (config) {
-      setUrl(config.DOCUMENT_TAGGING_URL);
-    }
-  }, [config]);
 
   const saveMutation = useMutation({
     mutationFn: updateDocumentTaggingConfig,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["document-tagging-config"] });
-      setSuccessMsg("Document tagging configuration saved successfully!");
+      setSuccessMsg("Document tagging settings saved.");
       setErrorMsg(null);
       setApiKey("");
       setTimeout(() => setSuccessMsg(null), 5000);
     },
-    onError: (err: any) => {
-      setErrorMsg(err?.response?.data?.detail ?? "Failed to save configuration");
+    onError: (err: unknown) => {
+      setErrorMsg(apiErrorMessage(err, "Failed to save configuration"));
       setSuccessMsg(null);
     },
   });
@@ -58,8 +54,7 @@ export function DocumentTaggingConfigPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Tag className="h-6 w-6 text-success" />
-          Document Tagging
+          Tagging settings
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Configure the external AI service that tags uploaded documents for search.
@@ -68,19 +63,13 @@ export function DocumentTaggingConfigPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Tagging Service Configuration</CardTitle>
+          <CardTitle className="text-base">Tagging service</CardTitle>
           <CardDescription>
             Every document upload is sent here in the background; the response is stored and made searchable.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-4 py-4">
-              <div className="h-4 bg-foreground/5 rounded w-1/4 animate-pulse"></div>
-              <div className="h-10 bg-foreground/5 rounded animate-pulse"></div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
               {errorMsg && (
                 <div className="border border-danger-line bg-danger-soft text-danger p-3 rounded-lg text-sm">
                   {errorMsg}
@@ -93,7 +82,7 @@ export function DocumentTaggingConfigPage() {
               )}
 
               <div className="space-y-1.5">
-                <Label htmlFor="tagging-url">Tagging Service URL *</Label>
+                <Label htmlFor="tagging-url">Service URL *</Label>
                 <Input
                   id="tagging-url"
                   placeholder="https://your-tagging-service.example.com/process-document"
@@ -117,18 +106,17 @@ export function DocumentTaggingConfigPage() {
                 <Button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="gap-2 bg-success hover:bg-success"
+                  className="gap-2"
                 >
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save Configuration
+                  Save settings
                 </Button>
               </div>
             </form>
-          )}
         </CardContent>
       </Card>
 

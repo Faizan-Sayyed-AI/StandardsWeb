@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { QueryError } from "@/components/QueryError";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Clock, Rss, Settings } from "lucide-react";
 import { listFeeds } from "@/api/feeds";
@@ -23,25 +25,21 @@ function toCronDayOfWeek(appDayOfWeek: number): number {
 }
 
 export function SchedulePage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["feeds", 1],
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["feeds", "schedule", 100],
     queryFn: () => listFeeds(1, 100),
   });
+
+  if (isError && !data) return <QueryError subject="the feed schedule" onRetry={refetch} />;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-violet" />
-          Schedule Configuration
+          Feed schedule
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          View and manage the polling schedule for all configured RSS feeds.
-          Edit individual feed schedules from the{" "}
-          <a href="/feeds" className="text-brand hover:underline">
-            Feed Management
-          </a>{" "}
-          page.
+          Manage polling from <Link to="/feeds" className="font-medium text-brand hover:underline">Feeds</Link>.
         </p>
       </div>
 
@@ -103,7 +101,7 @@ export function SchedulePage() {
               {data.items.map((feed) => (
                 <div
                   key={feed.id}
-                  className="flex items-center gap-4 rounded-lg border border-border bg-muted p-4 transition-colors hover:bg-muted"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted p-4 transition-colors hover:bg-muted"
                 >
                   {/* Status indicator */}
                   <div
@@ -113,7 +111,7 @@ export function SchedulePage() {
                   />
 
                   {/* Feed info */}
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 basis-[75%] sm:flex-1">
                     <div className="flex items-center gap-2">
                       <Rss className="h-3.5 w-3.5 text-info shrink-0" />
                       <p className="text-sm font-medium text-foreground truncate">{feed.name}</p>
@@ -127,7 +125,7 @@ export function SchedulePage() {
                   </div>
 
                   {/* Cron expression */}
-                  <div className="text-right shrink-0">
+                  <div className="sm:text-right shrink-0">
                     <p className="text-xs font-medium text-foreground">
                       {cronToHuman(
                         "",
@@ -161,7 +159,7 @@ export function SchedulePage() {
               <Calendar className="h-10 w-10 text-subtle-foreground" />
               <p className="text-sm text-muted-foreground">No feeds configured yet</p>
               <a href="/feeds" className="text-xs text-brand hover:underline">
-                Go to Feed Management →
+                Go to Feeds →
               </a>
             </div>
           )}

@@ -1,3 +1,6 @@
+import { Link } from "react-router-dom";
+import { QueryError } from "@/components/QueryError";
+import { apiErrorMessage } from "@/lib/apiError";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { formatDate } from "@/lib/utils";
 
 const STAGE_OPTIONS = [
@@ -109,7 +112,7 @@ export function StandardsPage() {
   };
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  const { isAdmin, isManager } = useAuth();
+  const { isManager: canCreateStandard } = useAuth();
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<StandardCreatePayload>(DEFAULT_CREATE_FORM);
@@ -127,11 +130,11 @@ export function StandardsPage() {
       navigate(`/standards/${created.id}`);
     },
     onError: (err: { response?: { data?: { detail?: string } } }) => {
-      setCreateError(err?.response?.data?.detail ?? "Failed to create standard");
+      setCreateError(apiErrorMessage(err, "Failed to create standard"));
     },
   });
 
-  const canCreate = isAdmin || isManager;
+
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
@@ -151,7 +154,7 @@ export function StandardsPage() {
     require_edition: !viewAll,
   };
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["standards", "list", queryParams],
     queryFn: () => listStandards(queryParams),
     placeholderData: (prev) => prev,
@@ -183,7 +186,7 @@ export function StandardsPage() {
     });
   };
 
-  const SortIcon = ({ col }: { col: string }) => {
+  const renderSortIcon = (col: string) => {
     if (params.sort_by !== col) return <ChevronDown className="h-3 w-3 opacity-30" />;
     return params.sort_order === "asc" ? (
       <ChevronUp className="h-3 w-3 text-brand" />
@@ -201,16 +204,17 @@ export function StandardsPage() {
 
   const totalPages = data ? Math.ceil(data.total / (params.page_size ?? 25)) : 1;
 
+  if (isError && !data) return <QueryError subject="standards" onRetry={refetch} />;
+
   return (
-    <div className="flex h-full flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {/* Sticky top section: header, search, filters */}
       <div className="flex-shrink-0 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-brand" />
-            Standards Library
+            Standards library
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data
@@ -218,10 +222,10 @@ export function StandardsPage() {
               : "Loading…"}
           </p>
         </div>
-        {canCreate && (
+        {canCreateStandard && (
           <Button onClick={() => setShowCreate(true)} className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Standard
+            Add standard
           </Button>
         )}
       </div>
@@ -230,10 +234,11 @@ export function StandardsPage() {
       <Card className="p-4">
         <div className="flex gap-3 flex-wrap">
           {/* Search */}
-          <div className="relative flex-1 min-w-56">
+          <div className="relative flex-1 min-w-[min(100%,14rem)]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search ISO reference, title, committee…"
+              aria-label="Search standards"
+              placeholder="Search reference, title, committee…"
               value={search}
               onChange={(e) => {
                 setQp({ q: e.target.value });
@@ -242,6 +247,7 @@ export function StandardsPage() {
             />
             {search && (
               <button
+                aria-label="Clear search"
                 onClick={() => setQp({ q: undefined })}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
@@ -265,10 +271,10 @@ export function StandardsPage() {
 
           {/* Filter toggle */}
           <Button
-            variant={showFilters ? "default" : "outline"}
+            aria-expanded={showFilters}
             size="sm"
             onClick={() => setQp({ filters: showFilters ? undefined : "1" }, false)}
-            className="gap-2"
+            className="gap-2 bg-gold text-foreground hover:bg-gold/85"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
             Filters
@@ -372,7 +378,7 @@ export function StandardsPage() {
                       className={`flex items-center gap-1 ${filterPill(params.sort_by === opt.value)}`}
                     >
                       {opt.label}
-                      {params.sort_by === opt.value && <SortIcon col={opt.value} />}
+                      {params.sort_by === opt.value && renderSortIcon(opt.value)}
                     </button>
                   ))}
                 </div>
@@ -385,16 +391,35 @@ export function StandardsPage() {
 
       {/* Table — independently scrollable, fills remaining height */}
       <Card className="flex flex-1 min-h-0 flex-col overflow-hidden">
-        <Table containerClassName="flex-1 min-h-0 overflow-y-auto">
-          <TableHeader className="sticky top-0 z-10 bg-background">
+        <div className="divide-y sm:hidden">
+          {isLoading && <p role="status" className="p-4">Loading standards…</p>}
+          {data?.items.length === 0 && <p className="p-4 text-sm">No standards match the current filters.</p>}
+          {data?.items.map(standard => (
+            <article key={standard.id} className="space-y-2 p-4">
+              <Link className="block font-semibold text-brand" to={`/standards/${standard.id}`}>{standard.iso_reference}</Link>
+              <p className="text-sm">{standard.title}</p>
+              <p className="text-xs text-muted-foreground">{[standard.stage_name, standard.edition && `Edition ${standard.edition}`, standard.tc_committee, standard.standards_body, standard.published_date && formatDate(standard.published_date), standard.is_purchased && "Purchased"].filter(Boolean).join(" · ")}</p>
+              {standard.versions_count > 1 && <details>
+                <summary className="cursor-pointer py-2 text-sm text-brand">Earlier editions ({standard.versions_count - 1})</summary>
+                {standard.versions.filter(version => version.id !== standard.id).map(version => (
+                  <Link className="block border-t py-2 text-sm text-brand" key={version.id} to={`/standards/${version.id}`}>
+                    {version.iso_reference} · {version.edition ?? "No edition"}
+                  </Link>
+                ))}
+              </details>}
+            </article>
+          ))}
+        </div>
+        <Table containerClassName="hidden sm:block flex-1 min-h-0 overflow-y-auto">
+          <TableHeader className="sticky top-0 z-10 bg-gold">
             <TableRow className="border-b border-border hover:bg-transparent">
               <TableHead className="w-8" />
-              <TableHead className="w-36">
+              <TableHead>
                 <button
                   className="flex items-center gap-1 hover:text-foreground"
                   onClick={() => updateSort("iso_reference")}
                 >
-                  Reference <SortIcon col="iso_reference" />
+                  Reference {renderSortIcon("iso_reference")}
                 </button>
               </TableHead>
               <TableHead>
@@ -402,7 +427,7 @@ export function StandardsPage() {
                   className="flex items-center gap-1 hover:text-foreground"
                   onClick={() => updateSort("title")}
                 >
-                  Title <SortIcon col="title" />
+                  Title {renderSortIcon("title")}
                 </button>
               </TableHead>
               <TableHead className="w-28">Committee</TableHead>
@@ -413,7 +438,7 @@ export function StandardsPage() {
                   className="flex items-center gap-1 hover:text-foreground"
                   onClick={() => updateSort("published_date")}
                 >
-                  Stage Date <SortIcon col="published_date" />
+                  Stage Date {renderSortIcon("published_date")}
                 </button>
               </TableHead>
             </TableRow>
@@ -482,9 +507,9 @@ export function StandardsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-brand hover:underline">
+                        <Link className="whitespace-nowrap font-mono text-xs font-bold text-brand hover:underline" to={`/standards/${std.id}`} onClick={event => event.stopPropagation()}>
                           {std.iso_reference}
-                        </span>
+                        </Link>
                         {/* The group's newest edition — says so, so the older
                             rows below it are unambiguous once expanded. */}
                         {hasVersions && (
@@ -545,9 +570,9 @@ export function StandardsPage() {
                   >
                     <TableCell className="py-2" />
                     <TableCell className="py-2 pl-6">
-                      <span className="font-mono text-xs font-medium text-muted-foreground hover:text-foreground hover:underline">
-                        {v.iso_reference}
-                      </span>
+                      <Link className="whitespace-nowrap font-mono text-xs font-medium text-muted-foreground hover:text-foreground hover:underline" to={`/standards/${v.id}`} onClick={event => event.stopPropagation()}>
+                          {v.iso_reference}
+                        </Link>
                     </TableCell>
                     <TableCell colSpan={2} className="py-2" />
                     <TableCell className="py-2">
@@ -606,13 +631,13 @@ export function StandardsPage() {
         )}
       </Card>
 
-      {/* Add Standard Dialog */}
+      {/* Add standard Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-brand" />
-              Add Standard
+              Add standard
             </DialogTitle>
             <DialogDescription>
               Manually add a standard from a body with no RSS feed (e.g. ASTM).
@@ -627,7 +652,7 @@ export function StandardsPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="std-reference">Reference Number</Label>
+              <Label htmlFor="std-reference">Reference number</Label>
               <Input
                 id="std-reference"
                 placeholder="ASTM D638-14"
@@ -644,7 +669,7 @@ export function StandardsPage() {
                 onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="std-body">Standards Body</Label>
                 <select
@@ -681,7 +706,7 @@ export function StandardsPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="std-committee">Committee / Working Group (optional)</Label>
                 <Input
@@ -741,7 +766,7 @@ export function StandardsPage() {
               className="gap-2"
             >
               {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Add Standard
+              Add standard
             </Button>
           </DialogFooter>
         </DialogContent>

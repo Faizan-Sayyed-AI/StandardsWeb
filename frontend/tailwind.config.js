@@ -14,6 +14,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        gold: "hsl(var(--gold) / <alpha-value>)",
         border: "hsl(var(--border) / <alpha-value>)",
         "border-strong": "hsl(var(--border-strong) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",

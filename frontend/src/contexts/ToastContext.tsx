@@ -1,23 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import { ToastContext } from "./useToast";
+import React, { useState, useCallback } from "react";
 import * as ToastPrimitive from "@radix-ui/react-toast";
 import { X } from "lucide-react";
 import { pushToast, type QueuedToast } from "@/lib/toastQueue";
 
 type ToastMessage = QueuedToast;
-
-interface ToastContextType {
-  toast: (message: Omit<ToastMessage, "id">) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
-
-export function useToast() {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error("useToast must be used within a ToastProvider");
-  }
-  return context;
-}
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -36,9 +23,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const handleApiError = (e: Event) => {
       const customEvent = e as CustomEvent<{ detail: string; code: string }>;
-      const { detail, code } = customEvent.detail;
+      const { detail } = customEvent.detail;
       toast({
-        title: code ? code.replace(/_/g, " ") : "Error",
+        title: "Request failed",
         description: detail || "An unexpected error occurred",
         variant: "destructive",
       });
@@ -78,7 +65,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           </ToastPrimitive.Root>
         ))}
 
-        <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-50 m-4 flex flex-col gap-3 w-full max-w-sm outline-none" />
+        <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-50 m-3 flex flex-col gap-3 w-[calc(100%_-_1.5rem)] max-w-sm outline-none" />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>
   );

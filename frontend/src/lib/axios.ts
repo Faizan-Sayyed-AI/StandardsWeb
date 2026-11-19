@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "./apiError";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -78,7 +79,7 @@ api.interceptors.response.use(
 
     if (error.response?.status !== 401 || original._retried) {
       const data = error.response?.data;
-      const detail = typeof data?.detail === "string" ? data.detail : (data?.detail ? JSON.stringify(data.detail) : error.message);
+      const detail = apiErrorMessage(error, "The request could not be completed.");
       const code = data?.code ?? "API_ERROR";
       window.dispatchEvent(
         new CustomEvent("api-error", { detail: { detail, code } })

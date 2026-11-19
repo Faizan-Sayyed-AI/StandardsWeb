@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { QueryError } from "@/components/QueryError";
+import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Layers, Download, Search, ChevronDown, ChevronUp, Clock, ShieldAlert, Database, Laptop
-} from "lucide-react";
+import { Download, Search, ChevronDown, ChevronUp, Clock, Database, Laptop } from "lucide-react";
 import { getAuditLogs, exportAuditLogsCsv } from "@/api/admin";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/lib/utils";
 
 export function AuditLogsPage() {
+  const [exportFailed, setExportFailed] = useState(false);
   const [page, setPage] = useState(1);
   const [actor, setActor] = useState("");
   const [action, setAction] = useState("");
@@ -34,12 +34,13 @@ export function AuditLogsPage() {
     end_date: endDate ? new Date(endDate).toISOString() : undefined,
   };
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["audit-logs", queryParams],
     queryFn: () => getAuditLogs(queryParams),
   });
 
   const handleExportCsv = async () => {
+    setExportFailed(false);
     try {
       const exportParams = {
         actor: actor.trim() || undefined,
@@ -57,8 +58,8 @@ export function AuditLogsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch (err) {
-      alert("Failed to export audit logs CSV");
+    } catch {
+      setExportFailed(true);
     }
   };
 
@@ -68,20 +69,22 @@ export function AuditLogsPage() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
+  if (isError && !data) return <QueryError subject="audit logs" onRetry={refetch} />;
+
   return (
     <div className="space-y-6">
+      {exportFailed && <p role="alert" className="text-sm text-danger">Could not export audit logs.</p>}
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Layers className="h-6 w-6 text-brand" />
-            Audit Logs
+            Audit logs
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {data ? `${data.total.toLocaleString()} immutable audit trail events` : "Loading logs…"}
+            {data ? `${data.total.toLocaleString()} audit events` : "Loading logs…"}
           </p>
         </div>
-        <Button onClick={handleExportCsv} className="gap-2 bg-primary hover:bg-primary">
+        <Button onClick={handleExportCsv} className="gap-2 ">
           <Download className="h-4 w-4" />
           Export to CSV
         </Button>
@@ -180,18 +183,19 @@ export function AuditLogsPage() {
                   </TableRow>
                 ) : (
                   data?.items.map((log) => (
-                    <>
+                    <Fragment key={log.id}>
                       <TableRow
-                        key={log.id}
                         className="cursor-pointer hover:bg-muted transition-colors"
                         onClick={() => toggleRow(log.id)}
                       >
                         <TableCell className="text-center">
+                          <button aria-label="Event details" aria-expanded={expandedRow === log.id} className="p-2">
                           {expandedRow === log.id ? (
                             <ChevronUp className="h-4 w-4 text-muted-foreground" />
                           ) : (
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
                           )}
+                          </button>
                         </TableCell>
                         <TableCell>
                           <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
@@ -232,7 +236,7 @@ export function AuditLogsPage() {
                           <TableCell colSpan={6} className="px-12 py-4">
                             <div className="space-y-2">
                               <div className="flex justify-between text-[10px] text-subtle-foreground uppercase font-semibold tracking-wider">
-                                <span>Audit Metadata Context Payload</span>
+                                <span>Event details</span>
                                 {log.resource_id && <span>Resource ID: {log.resource_id}</span>}
                               </div>
                               <pre className="text-[11px] font-mono bg-foreground/5 border border-border p-3.5 rounded-lg overflow-x-auto text-foreground leading-relaxed max-w-full">
@@ -242,7 +246,7 @@ export function AuditLogsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   ))
                 )}
           </TableBody>

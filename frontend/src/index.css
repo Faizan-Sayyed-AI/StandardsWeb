@@ -3,112 +3,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===========================================================================
-   Design tokens
-   ---------------------------------------------------------------------------
-   Two planes and one hairline. `background` is the page ground, `card` is the
-   raised surface that sits on it, `border` is the line between them. Every
-   colour below is a token — components must never reach for a raw Tailwind
-   palette colour (text-indigo-400, bg-teal-500/10, …), because those are tuned
-   for one theme and silently fail in the other. On white, indigo-400 measures
-   2.98:1 and teal-300 measures 1.48:1; both are unreadable.
-
-   Accent families come in three roles so tints stay consistent everywhere:
-     --x            readable text/icon colour on a light surface (>= 4.5:1)
-     --x-soft       tint fill behind that text
-     --x-line       border for the tinted container
-
-   Light values are measured against #FFFFFF and the page ground; all clear
-   WCAG AA, most sit between 5.5:1 and 7:1.
-   =========================================================================== */
-
 @layer base {
-  /* ── Dark (default) ─────────────────────────────────────────────────────── */
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 44% 10%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 44% 11%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 238 83% 67%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 238 83% 72%;
-
-    --secondary: 222 40% 16%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 222 40% 13%;
-    --muted-foreground: 215 18% 62%;
-    --subtle-foreground: 215 16% 50%;
-
-    --accent: 173 80% 40%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 222 30% 20%;
-    --border-strong: 222 28% 26%;
-    --input: 222 40% 14%;
-    --ring: 238 83% 67%;
+    color-scheme: light;
     --radius: 0.5rem;
-
-    /* Accent families */
-    --brand: 238 83% 72%;
-    --brand-soft: 238 70% 60% / 0.16;
-    --brand-line: 238 70% 62% / 0.32;
-
-    --success: 168 70% 52%;
-    --success-soft: 168 66% 45% / 0.16;
-    --success-line: 168 66% 48% / 0.32;
-
-    --warning: 38 92% 60%;
-    --warning-soft: 38 90% 52% / 0.16;
-    --warning-line: 38 90% 55% / 0.32;
-
-    --danger: 0 84% 68%;
-    --danger-soft: 0 80% 58% / 0.16;
-    --danger-line: 0 80% 60% / 0.32;
-
-    --info: 213 90% 68%;
-    --info-soft: 213 85% 58% / 0.16;
-    --info-line: 213 85% 60% / 0.32;
-
-    --violet: 270 85% 74%;
-    --violet-soft: 270 75% 62% / 0.16;
-    --violet-line: 270 75% 64% / 0.32;
-
-    /* Sidebar rail */
-    --sidebar: 222 47% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-muted: 215 18% 60%;
-    --sidebar-border: 222 30% 18%;
-    --sidebar-hover: 210 40% 98% / 0.06;
-
-    /* Elevation — dark UIs get separation from borders, not shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(222 60% 2% / 0.6);
-    --shadow-md: 0 4px 12px -2px hsl(222 60% 2% / 0.6);
-    --shadow-lg: 0 16px 40px -12px hsl(222 60% 2% / 0.75);
-  }
-
-  /* ── Light ──────────────────────────────────────────────────────────────── */
-  html.light {
-    --background: 220 24% 96%;
+    --background: 0 0% 99%;
+    --gold: 47 84% 61%;
     --foreground: 222 32% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 32% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 32% 11%;
 
-    --primary: 238 66% 54%;
+    --primary: 222 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 238 60% 46%;
+    --primary-hover: 222 85% 44%;
 
     --secondary: 220 18% 93%;
     --secondary-foreground: 222 32% 11%;
     --muted: 220 20% 95%;
     --muted-foreground: 220 12% 40%;
-    --subtle-foreground: 220 10% 50%;
+    --subtle-foreground: 215 15% 41%;
 
     --accent: 168 78% 26%;
     --accent-foreground: 0 0% 100%;
@@ -118,12 +33,12 @@
     --border: 220 16% 87%;
     --border-strong: 220 16% 80%;
     --input: 0 0% 100%;
-    --ring: 238 66% 54%;
+    --ring: 217 64% 40%;
 
     /* Accent families — all >= 4.5:1 on white and on the page ground */
-    --brand: 238 66% 54%;
-    --brand-soft: 238 80% 58% / 0.10;
-    --brand-line: 238 60% 55% / 0.26;
+    --brand: 217 64% 40%;
+    --brand-soft: 217 72% 52% / 0.10;
+    --brand-line: 217 64% 46% / 0.26;
 
     --success: 168 78% 26%;
     --success-soft: 168 70% 40% / 0.12;
@@ -154,7 +69,7 @@
 
     /* Elevation — light UIs need real, tight shadows to lift a surface */
     --shadow-sm: 0 1px 2px 0 hsl(220 30% 20% / 0.06);
-    --shadow-md: 0 1px 3px 0 hsl(220 30% 20% / 0.08), 0 4px 12px -4px hsl(220 30% 20% / 0.08);
+    --shadow-md: 0 1px 3px hsl(217 38% 24% / 0.06), 0 6px 18px -7px hsl(217 38% 24% / 0.16);
     --shadow-lg: 0 4px 8px -2px hsl(220 30% 20% / 0.08), 0 16px 32px -12px hsl(220 30% 20% / 0.14);
   }
 }
@@ -197,6 +112,16 @@
   }
 }
 
+@media (pointer: coarse) {
+  button, [role="tab"], select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    min-height: 44px;
+  }
+
+  button, [role="tab"] {
+    min-width: 44px;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
@@ -219,52 +144,6 @@
   background-clip: content-box;
 }
 
-/* Brand lockup text. Gradients over text lose contrast fast, so light mode
-   keeps both stops dark enough to stay readable. */
-.gradient-text {
-  background: linear-gradient(100deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.8;
-  }
-
-  50% {
-    transform: scale(1.1);
-    opacity: 0.4;
-  }
-
-  100% {
-    transform: scale(0.8);
-    opacity: 0.8;
-  }
-}
-
-.pulse-ring {
-  animation: pulse-ring 2s ease-in-out infinite;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.3s ease-out forwards;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -276,6 +155,15 @@
   }
 }
 
-#login_page_form {
-  overflow-x: hidden;
+.login-surface {
+  background-color: #f7f9fc;
+  background-image: linear-gradient(to right, rgb(78 105 137 / 3%) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(78 105 137 / 3%) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@layer components {
+  :where(.table-body > tr:nth-child(even)) {
+    background-color: hsl(var(--muted) / 0.65);
+  }
 }

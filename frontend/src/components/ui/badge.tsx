@@ -51,7 +51,7 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
-export { Badge, badgeVariants };
+export { Badge };
 
 // Convenience component: auto-selects variant from standard status string
 export function StatusBadge({ status }: { status: string }) {

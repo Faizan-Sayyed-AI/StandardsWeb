@@ -1,15 +1,17 @@
+import { QueryError } from "@/components/QueryError";
+import { apiErrorMessage } from "@/lib/apiError";
+import { ConfirmationDialog, type Confirmation } from "@/components/ConfirmationDialog";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle, Clock, Loader2, Play, Plus, RefreshCw, Rss,
-  ToggleRight, Trash2, XCircle,
+  CheckCircle, Clock, Loader2, Play, Plus, Rss,
+  ToggleRight, Trash2, XCircle
 } from "lucide-react";
 import { listFeeds, createFeed, updateFeed, deleteFeed, triggerPoll, type Feed, type FeedCreate } from "@/api/feeds";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { StatusBadge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,8 +20,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/contexts/ToastContext";
-import { formatDateTime, timeAgo } from "@/lib/utils";
+import { useToast } from "@/contexts/useToast";
+import { timeAgo } from "@/lib/utils";
 
 // How long to wait for a manually-triggered poll to actually complete before
 // giving up and telling the user to check back later. Feed fetches usually
@@ -52,6 +54,7 @@ const DEFAULT_FORM: FeedCreate = {
 };
 
 export function FeedsPage() {
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const qc = useQueryClient();
   const { toast } = useToast();
   const [page, setPage] = useState(1);
@@ -71,7 +74,7 @@ export function FeedsPage() {
   // implied by the persistent Status column updating silently.
   const [justFetched, setJustFetched] = useState<Record<string, "ok" | "failed">>({});
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["feeds", page],
     queryFn: () => listFeeds(page, 20),
     // While watching a manually-triggered poll, refetch frequently so we can
@@ -108,7 +111,8 @@ export function FeedsPage() {
       setJustFetched((prev) => ({ ...prev, [feed.id]: outcome }));
       setTimeout(() => {
         setJustFetched((prev) => {
-          const { [feed.id]: _removed, ...rest } = prev;
+          const rest = { ...prev };
+          delete rest[feed.id];
           return rest;
         });
       }, JUST_FETCHED_BADGE_MS);
@@ -133,7 +137,7 @@ export function FeedsPage() {
       setFormError(null);
     },
     onError: (err: { response?: { data?: { detail?: string } } }) => {
-      setFormError(err?.response?.data?.detail ?? "Failed to create feed");
+      setFormError(apiErrorMessage(err, "Failed to create feed"));
     },
   });
 
@@ -190,14 +194,17 @@ export function FeedsPage() {
     }
   };
 
+  if (isError && !data) return <QueryError subject="feeds" onRetry={refetch} />;
+
   return (
     <div className="space-y-6">
+      <ConfirmationDialog request={confirmation} onClose={() => setConfirmation(null)} />
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Rss className="h-6 w-6 text-info" />
-            Feed Management
+            Feeds
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data ? `${data.total} RSS feeds configured` : "Loading…"}
@@ -205,7 +212,7 @@ export function FeedsPage() {
         </div>
         <Button onClick={() => setShowCreate(true)} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add Feed
+          Add feed
         </Button>
       </div>
 
@@ -329,9 +336,13 @@ export function FeedsPage() {
                           title="Delete feed"
                           disabled={deleteMutation.isPending}
                           onClick={() => {
-                            if (confirm(`Delete feed "${feed.name}"?`)) {
-                              deleteMutation.mutate(feed.id);
-                            }
+                            setConfirmation({
+                              action: "Delete feed",
+                              description: `Delete feed "${feed.name}"?`,
+                              onConfirm: () => {
+                                deleteMutation.mutate(feed.id);
+                              },
+                            });
                           }}
                           className="h-7 w-7 text-muted-foreground hover:text-danger"
                         >
@@ -357,7 +368,7 @@ export function FeedsPage() {
         )}
       </Card>
 
-      {/* Create Feed Dialog */}
+      {/* Create feed Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
@@ -395,7 +406,7 @@ export function FeedsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="feed-committee">TC Committee (optional)</Label>
                 <Input
@@ -476,7 +487,7 @@ export function FeedsPage() {
               className="gap-2"
             >
               {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create Feed
+              Create feed
             </Button>
           </DialogFooter>
         </DialogContent>

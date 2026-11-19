@@ -1,77 +1,46 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { AuthContext, type User } from "./useAuth";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginApi, logoutApi } from "@/api/auth";
-import { getAccessToken, setAccessToken } from "@/lib/axios";
+import api, { getAccessToken, setAccessToken } from "@/lib/axios";
 import { decodeJwtPayload } from "@/lib/jwt";
 import { queryClient } from "@/lib/queryClient";
 
-interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  role: string;
-  is_active: boolean;
+function userFromToken(token: string, fallbackEmail = ""): User {
+  const claims = decodeJwtPayload<{ sub: string; email?: string; full_name?: string; role: string }>(token);
+  return { id: claims.sub, email: claims.email ?? fallbackEmail, full_name: claims.full_name ?? "", role: claims.role, is_active: true };
 }
-
-interface AuthContextValue {
-  user: User | null;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  isManager: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  isLoading: boolean;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // On mount: try to restore session via silent refresh (cookie is present)
+  // Strict Mode replays effects in development. Both runs must share the
+  // same refresh request because the server rotates the cookie on use.
+  const sessionRequest = useRef<Promise<{ access_token: string }> | null>(null);
   useEffect(() => {
-    (async () => {
-      try {
-        // Attempt silent token refresh using httpOnly cookie
-        const { default: api } = await import("@/lib/axios");
-        const { data } = await api.post<{ access_token: string }>("/api/v1/auth/refresh");
-        setAccessToken(data.access_token);
-        // Decode JWT payload to get user info
-        const payload = decodeJwtPayload<{ sub: string; email?: string; full_name?: string; role: string }>(
-          data.access_token
-        );
-        setUser({
-          id: payload.sub,
-          email: payload.email ?? "",
-          full_name: payload.full_name ?? "",
-          role: payload.role,
-          is_active: true,
-        });
-      } catch {
-        setAccessToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
+    let active = true;
+    sessionRequest.current ??= api.post<{ access_token: string }>("/api/v1/auth/refresh")
+      .then(response => response.data);
+    sessionRequest.current.then(({ access_token }) => {
+      if (!active) return;
+      setAccessToken(access_token);
+      setUser(userFromToken(access_token));
+    }).catch(() => {
+      if (!active) return;
+      setAccessToken(null);
+      setUser(null);
+    }).finally(() => {
+      if (active) setIsLoading(false);
+    });
+    return () => { active = false; };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await loginApi(email, password);
-    setAccessToken(data.access_token);
-    // Decode payload
-    const payload = decodeJwtPayload<{ sub: string; email?: string; full_name?: string; role: string }>(
-      data.access_token
-    );
-    setUser({
-      id: payload.sub,
-      email: payload.email ?? email,
-      full_name: payload.full_name ?? "",
-      role: payload.role,
-      is_active: true,
-    });
+    const { access_token } = await loginApi(email, password);
+    setAccessToken(access_token);
+    setUser(userFromToken(access_token, email));
   }, []);
 
   const logout = useCallback(async () => {
@@ -104,10 +73,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
-  return ctx;
 }

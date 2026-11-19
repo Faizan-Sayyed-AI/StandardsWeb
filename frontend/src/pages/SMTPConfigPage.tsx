@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { QueryError } from "@/components/QueryError";
+import { apiErrorMessage } from "@/lib/apiError";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Settings, Save, Server, Loader2, Info } from "lucide-react";
+import { Save, Server, Loader2, Info } from "lucide-react";
 import { getSMTPConfig, updateSMTPConfig, type SMTPConfig } from "@/api/distributionLists";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,48 +10,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function SMTPConfigPage() {
+  const { data, isError, refetch } = useQuery({ queryKey: ["smtp-config"], queryFn: getSMTPConfig });
+  if (isError && !data) return <QueryError subject="settings" onRetry={refetch} />;
+  if (!data) return <p role="status">Loading settings…</p>;
+  return <SettingsForm config={data} />;
+}
+
+function SettingsForm({ config }: { config: SMTPConfig }) {
   const qc = useQueryClient();
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState(1025);
-  const [user, setUser] = useState("");
+  const [host, setHost] = useState(config.SMTP_HOST);
+  const [port, setPort] = useState(config.SMTP_PORT);
+  const [user, setUser] = useState(config.SMTP_USER);
   const [password, setPassword] = useState("");
-  const [useTls, setUseTls] = useState(false);
-  const [fromAddress, setFromAddress] = useState("");
+  const [useTls, setUseTls] = useState(config.SMTP_USE_TLS);
+  const [fromAddress, setFromAddress] = useState(config.SMTP_FROM_ADDRESS);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  const { data: config, isLoading } = useQuery({
-    queryKey: ["smtp-config"],
-    queryFn: getSMTPConfig,
-  });
-
-  // Populate state on load. SMTP_PASSWORD is intentionally left out — the
-  // API only ever returns it masked ("********"), and loading that into an
-  // editable field means saving any unrelated change would silently resend
-  // the mask as the new password, overwriting the real one. Leaving the
-  // field blank (with a placeholder) and having the backend treat a blank
-  // submission as "keep the current password" avoids that trap.
-  useEffect(() => {
-    if (config) {
-      setHost(config.SMTP_HOST);
-      setPort(config.SMTP_PORT);
-      setUser(config.SMTP_USER);
-      setUseTls(config.SMTP_USE_TLS);
-      setFromAddress(config.SMTP_FROM_ADDRESS);
-    }
-  }, [config]);
 
   const saveMutation = useMutation({
     mutationFn: updateSMTPConfig,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["smtp-config"] });
-      setSuccessMsg("SMTP configuration saved successfully!");
+      setSuccessMsg("SMTP settings saved.");
       setErrorMsg(null);
       setPassword("");
       setTimeout(() => setSuccessMsg(null), 5000);
     },
-    onError: (err: any) => {
-      setErrorMsg(err?.response?.data?.detail ?? "Failed to save SMTP configuration");
+    onError: (err: unknown) => {
+      setErrorMsg(apiErrorMessage(err, "Failed to save SMTP configuration"));
       setSuccessMsg(null);
     }
   });
@@ -75,11 +63,10 @@ export function SMTPConfigPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Settings className="h-6 w-6 text-success" />
-          SMTP Server Settings
+          SMTP settings
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Configure the SMTP mail server used by background workers to deliver standard lifecycle alerts.
+          Set the mail server used to send standards alerts.
         </p>
       </div>
 
@@ -94,15 +81,7 @@ export function SMTPConfigPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-4 py-4">
-              <div className="h-4 bg-foreground/5 rounded w-1/4 animate-pulse"></div>
-              <div className="h-10 bg-foreground/5 rounded animate-pulse"></div>
-              <div className="h-4 bg-foreground/5 rounded w-1/3 animate-pulse"></div>
-              <div className="h-10 bg-foreground/5 rounded animate-pulse"></div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
               {errorMsg && (
                 <div className="border border-danger-line bg-danger-soft text-danger p-3 rounded-lg text-sm">
                   {errorMsg}
@@ -114,8 +93,8 @@ export function SMTPConfigPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2 space-y-1.5">
                   <Label htmlFor="smtp-host">SMTP Host *</Label>
                   <Input
                     id="smtp-host"
@@ -138,7 +117,7 @@ export function SMTPConfigPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="smtp-from">From Email Address *</Label>
+                <Label htmlFor="smtp-from">From Email address *</Label>
                 <Input
                   id="smtp-from"
                   placeholder="ists@local"
@@ -185,27 +164,26 @@ export function SMTPConfigPage() {
                 <Button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="gap-2 bg-success hover:bg-success"
+                  className="gap-2"
                 >
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save Configuration
+                  Save settings
                 </Button>
               </div>
             </form>
-          )}
         </CardContent>
       </Card>
 
       <div className="rounded-lg border border-success-line bg-success-soft px-4 py-3 flex gap-3 text-sm text-success">
         <Info className="h-5 w-5 shrink-0 mt-0.5" />
         <div>
-          <p className="font-semibold">Dynamic Updates</p>
+          <p className="font-semibold">When settings take effect</p>
           <p className="opacity-90 mt-0.5">
-            SMTP configuration updates are stored immediately in the database and applied on all subsequent transactional email deliveries without worker container restarts.
+            Saved settings apply to the next email delivery.
           </p>
         </div>
       </div>

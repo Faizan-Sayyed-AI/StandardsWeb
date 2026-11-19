@@ -1,9 +1,9 @@
-import { Bell, CheckCheck, LogOut, RefreshCw } from "lucide-react";
+import { Bell, CheckCheck, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getUnreadCount, listNotifications, markAllRead, markRead } from "@/api/notifications";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn, timeAgo } from "@/lib/utils";
 
@@ -99,6 +99,8 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={containerRef}>
       <button
+        aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className={cn(
           "relative flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-200",
@@ -109,7 +111,7 @@ export function NotificationBell() {
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground pulse-ring">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -119,7 +121,7 @@ export function NotificationBell() {
         <>
           {/* Panel — dismissal is handled by the outside-click effect above,
               not a backdrop element (see the comment there for why). */}
-          <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-border bg-popover/95 backdrop-blur-xl shadow-2xl">
+          <div className="fixed inset-x-3 top-16 z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80 rounded-xl border border-border bg-popover/95 backdrop-blur-xl shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
