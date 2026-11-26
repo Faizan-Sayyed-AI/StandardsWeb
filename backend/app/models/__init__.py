@@ -6,6 +6,7 @@ from app.models.celery_schedule import CelerySchedule
 from app.models.distribution_list import DistributionList, DistributionListMember
 from app.models.document import Document
 from app.models.document_tag import DocumentTag
+from app.models.email_digest import EmailDigestQueueItem, EmailDigestRun
 from app.models.notification import Notification
 from app.models.notification_mapping import NotificationTriggerMapping
 from app.models.password_reset_token import PasswordResetToken
@@ -24,6 +25,8 @@ __all__ = [
     "DistributionListMember",
     "Document",
     "DocumentTag",
+    "EmailDigestQueueItem",
+    "EmailDigestRun",
     "Notification",
     "NotificationTriggerMapping",
     "PasswordResetToken",

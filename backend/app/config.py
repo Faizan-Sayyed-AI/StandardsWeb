@@ -111,6 +111,21 @@ class Settings(BaseSettings):
     # a Host header from.
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # ── Email digest ──────────────────────────────────────
+    # When enabled, notification emails are not sent one per event. Events are
+    # queued (email_digest_queue) and compiled into ONE email per recipient on
+    # the configured days. In-app notifications are unaffected. Off by default,
+    # so deploying the code and migration changes nothing until it is switched on.
+    EMAIL_DIGEST_ENABLED: bool = False
+    # Comma-separated weekday abbreviations (mon,tue,wed,thu,fri,sat,sun).
+    EMAIL_DIGEST_DAYS: str = "mon,thu"
+    # Local hour (0-23) in EMAIL_DIGEST_TIMEZONE. The slot also catches up for the
+    # rest of that day if the server was down at the scheduled hour.
+    EMAIL_DIGEST_HOUR: int = 11
+    EMAIL_DIGEST_TIMEZONE: str = "Asia/Kolkata"
+    # Event types that never produce an email in digest mode (in-app still happens).
+    EMAIL_DIGEST_EXCLUDED_EVENT_TYPES: str = "document_uploaded"
+
     # ── App ───────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"

@@ -395,6 +395,32 @@ async def _send_email_notification_async(
     }
 
 
+async def _queue_for_digest_async(
+    event_type: str,
+    standard_id: str,
+    document_id: str | None,
+    triggered_by_id: str | None,
+) -> dict:
+    from app.database import async_session_factory
+    from app.services.email_digest_service import enqueue_event, excluded_event_types
+
+    if event_type in excluded_event_types():
+        log.info("email_digest_event_excluded", event_type=event_type, standard_id=standard_id)
+        return {"status": "skipped", "reason": "event_type_excluded_from_digest"}
+
+    async with async_session_factory() as db:
+        await enqueue_event(
+            db,
+            event_type=event_type,
+            standard_id=uuid.UUID(standard_id),
+            document_id=uuid.UUID(document_id) if document_id else None,
+            triggered_by_id=uuid.UUID(triggered_by_id) if triggered_by_id else None,
+        )
+        await db.commit()
+    log.info("email_digest_event_queued", event_type=event_type, standard_id=standard_id)
+    return {"status": "queued_for_digest"}
+
+
 @celery.task(
     name="app.tasks.notifications.send_email_notification",
     queue="notifications",
@@ -419,6 +445,15 @@ def send_email_notification(self, payload: dict) -> dict:  # type: ignore[no-unt
 
     if not event_type or not standard_id:
         return {"status": "error", "reason": "missing_required_fields"}
+
+    # Digest mode: don't email per event. Queue it for the weekly digest instead
+    # (or drop the email entirely for excluded types). In-app notifications are
+    # created elsewhere and are not affected. With the flag off this block is
+    # skipped and behaviour is exactly as before.
+    if settings.EMAIL_DIGEST_ENABLED:
+        return asyncio.run(
+            _queue_for_digest_async(event_type, standard_id, document_id, triggered_by_id)
+        )
 
     try:
         return asyncio.run(
@@ -462,3 +497,43 @@ def send_bulk_notification(payload: dict) -> dict:  # type: ignore[no-untyped-de
         return {"status": "error", "reason": "missing_required_fields"}
 
     return asyncio.run(_send_bulk_notification_async(event_type, standard_id, triggered_by_id))
+
+
+async def _dispatch_email_digest_async() -> dict:
+    from datetime import datetime, timezone
+
+    from app.database import async_session_factory
+    from app.services.email_digest_service import due_slot_key, run_digest
+
+    slot = due_slot_key(
+        datetime.now(timezone.utc),
+        days=settings.EMAIL_DIGEST_DAYS,
+        hour=settings.EMAIL_DIGEST_HOUR,
+        tz_name=settings.EMAIL_DIGEST_TIMEZONE,
+    )
+    if slot is None:
+        return {"status": "skipped", "reason": "not_a_digest_slot"}
+    async with async_session_factory() as db:
+        return await run_digest(db, slot)
+
+
+@celery.task(
+    name="app.tasks.notifications.dispatch_email_digest",
+    queue="notifications",
+    bind=True,
+    max_retries=0,
+)
+def dispatch_email_digest(self) -> dict:  # type: ignore[no-untyped-def]
+    """
+    Hourly tick. Sends the weekly digest once per configured slot (default Mon/Thu
+    from 11:00 IST). Idempotent: the slot is claimed in email_digest_runs, so extra
+    ticks, a second beat, or a restart cannot double-send. On an SMTP failure the
+    claim is released and the next hourly tick the same day retries.
+    """
+    if not settings.EMAIL_DIGEST_ENABLED:
+        return {"status": "skipped", "reason": "digest_disabled"}
+    try:
+        return asyncio.run(_dispatch_email_digest_async())
+    except Exception as exc:  # noqa: BLE001
+        log.error("dispatch_email_digest_failed", error=str(exc))
+        return {"status": "error", "reason": str(exc)}

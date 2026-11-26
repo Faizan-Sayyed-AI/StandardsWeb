@@ -90,6 +90,15 @@ celery.conf.update(
         # successful request is its only other exit, so without this sweep the
         # pool drains permanently and every feed poll is skipped. Hourly; the
         # cooldown (API_KEY_RATE_LIMIT_COOLDOWN_HOURS) decides eligibility.
+        # Weekly email digest. Fires hourly and decides inside the task whether
+        # this is a send slot (EMAIL_DIGEST_DAYS/HOUR/TIMEZONE), so changing the
+        # days is a settings change, not a schedule edit. No-op while
+        # EMAIL_DIGEST_ENABLED is false.
+        "dispatch-email-digest-hourly": {
+            "task": "app.tasks.notifications.dispatch_email_digest",
+            "schedule": 3600.0,
+            "options": {"queue": "notifications"},
+        },
         "recover-rate-limited-api-keys-hourly": {
             "task": "app.tasks.maintenance.recover_rate_limited_api_keys",
             "schedule": 3600.0,
