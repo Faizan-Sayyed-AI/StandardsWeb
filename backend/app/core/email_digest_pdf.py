@@ -7,20 +7,27 @@ type. Each reference and each "View" cell is a clickable link to
 """
 
 import io
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.core.email_digest_template import DigestSection
 
-TEAL = colors.HexColor("#0f766e")
-SLATE = colors.HexColor("#334155")
-MUTED = colors.HexColor("#64748b")
-LINE = colors.HexColor("#e2e8f0")
+# App palette (frontend/src/index.css): gold table headers with dark text,
+# brand blue for links, near-black foreground, soft grey borders.
+GOLD = colors.HexColor("#efcb48")      # --gold
+INK = colors.HexColor("#131825")       # --foreground
+MUTED = colors.HexColor("#5a6272")     # --muted-foreground
+BRAND = colors.HexColor("#2557a7")     # --brand (links)
+LINE = colors.HexColor("#d9dce3")      # --border
+ZEBRA = colors.HexColor("#f0f1f5")     # --muted
+LOGO_PATH = Path(__file__).resolve().parents[1] / "assets" / "biorad-medisys.png"
+LINK = "#2557a7"
 
 
 def _p(text: str, style: ParagraphStyle) -> Paragraph:
@@ -36,13 +43,11 @@ def build_digest_pdf(
 ) -> bytes:
     base = frontend_url.rstrip("/")
     styles = getSampleStyleSheet()
-    body = ParagraphStyle("body", parent=styles["BodyText"], fontSize=9, leading=11, textColor=SLATE)
-    head = ParagraphStyle(
-        "head", parent=body, fontName="Helvetica-Bold", textColor=colors.white
-    )
-    h1 = ParagraphStyle("h1", parent=styles["Title"], fontSize=20, textColor=TEAL, alignment=0, spaceAfter=2)
+    body = ParagraphStyle("body", parent=styles["BodyText"], fontSize=9, leading=11, textColor=INK)
+    head = ParagraphStyle("head", parent=body, fontName="Helvetica-Bold", textColor=INK)
+    h1 = ParagraphStyle("h1", parent=styles["Title"], fontSize=20, textColor=INK, alignment=0, spaceAfter=2)
     h2 = ParagraphStyle(
-        "h2", parent=styles["Heading2"], fontSize=13, textColor=colors.HexColor("#0f172a"),
+        "h2", parent=styles["Heading2"], fontSize=13, textColor=INK,
         spaceBefore=14, spaceAfter=6,
     )
     sub = ParagraphStyle("sub", parent=body, textColor=MUTED, fontSize=10)
@@ -57,7 +62,16 @@ def build_digest_pdf(
         author="StandardSphere",
     )
 
-    story = [
+    story = []
+    if LOGO_PATH.exists():
+        logo = Image(str(LOGO_PATH), width=48 * mm, height=48 * mm * 62 / 282)
+        logo.hAlign = "LEFT"
+        story += [logo, Spacer(1, 6)]
+    rule = Table([[""]], colWidths=[258 * mm], rowHeights=[1.6 * mm])
+    rule.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), GOLD)]))
+    story += [
+        rule,
+        Spacer(1, 6),
         Paragraph("StandardSphere weekly digest", h1),
         Paragraph(
             f"{escape(period_label)} &nbsp;|&nbsp; Prepared for {escape(recipient_name)} "
@@ -65,7 +79,7 @@ def build_digest_pdf(
             sub,
         ),
         Spacer(1, 4),
-        Paragraph(f'<link href="{escape(base)}" color="#0f766e">Open the StandardSphere dashboard</link>', body),
+        Paragraph(f'<link href="{escape(base)}" color="{LINK}">Open the StandardSphere dashboard</link>', body),
         Spacer(1, 8),
     ]
 
@@ -75,7 +89,7 @@ def build_digest_pdf(
         summary.append([_p(sec.label, body), _p(str(len(sec.items)), body)])
     t = Table(summary, colWidths=[70 * mm, 30 * mm], hAlign="LEFT")
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), TEAL),
+        ("BACKGROUND", (0, 0), (-1, 0), GOLD),
         ("LINEBELOW", (0, 0), (-1, -1), 0.5, LINE),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
@@ -87,8 +101,8 @@ def build_digest_pdf(
         rows = [[_p(h, head) for h in ("Reference", "Title", "Status", "Edition", "Committee", "Changes", "Link")]]
         for it in sec.items:
             url = f"{base}/standards/{it.standard_id}"
-            link = f'<link href="{escape(url)}" color="#0f766e">{escape(it.iso_reference)}</link>'
-            view = f'<link href="{escape(url)}" color="#0f766e"><u>View</u></link>'
+            link = f'<link href="{escape(url)}" color="{LINK}">{escape(it.iso_reference)}</link>'
+            view = f'<link href="{escape(url)}" color="{LINK}"><u>View</u></link>'
             rows.append([
                 Paragraph(link, body),
                 _p(it.title, body),
@@ -100,8 +114,8 @@ def build_digest_pdf(
             ])
         tbl = Table(rows, colWidths=cols, repeatRows=1, hAlign="LEFT")
         tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), TEAL),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+            ("BACKGROUND", (0, 0), (-1, 0), GOLD),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, ZEBRA]),
             ("LINEBELOW", (0, 0), (-1, -1), 0.4, LINE),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("TOPPADDING", (0, 0), (-1, -1), 4),
