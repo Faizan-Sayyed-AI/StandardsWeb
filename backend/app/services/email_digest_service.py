@@ -20,6 +20,7 @@ Delivery rules:
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
@@ -31,6 +32,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.email_digest_pdf import build_digest_pdf
 from app.core.email_digest_template import SECTION_ORDER, DigestItem, DigestSection, render_digest
 from app.core.smtp_config import get_active_smtp_settings
 from app.models.distribution_list import DistributionListMember
@@ -196,6 +198,8 @@ async def run_digest(db: AsyncSession, slot_key: str) -> dict:
                             title=standards[sid].title,
                             status=str(getattr(standards[sid].status, "value", standards[sid].status)).upper(),
                             count=count,
+                            edition=str(standards[sid].edition or ""),
+                            committee=str(standards[sid].tc_committee or ""),
                         )
                         for sid, count in by_event[event_type].items()
                     ]
@@ -211,15 +215,30 @@ async def run_digest(db: AsyncSession, slot_key: str) -> dict:
                         frontend_url=settings.frontend_base_url,
                         period_label=period_label,
                     )
-                    msg = MIMEMultipart("alternative")
+                    pdf = build_digest_pdf(
+                        recipient_name=name,
+                        sections=sections,
+                        frontend_url=settings.frontend_base_url,
+                        period_label=period_label,
+                    )
+                    msg = MIMEMultipart("mixed")
                     msg["Subject"] = (
                         f"[StandardSphere] Weekly digest: {total} standard"
                         f"{'s' if total != 1 else ''} updated"
                     )
                     msg["From"] = smtp["SMTP_FROM_ADDRESS"]
                     msg["To"] = email
-                    msg.attach(MIMEText(text, "plain"))
-                    msg.attach(MIMEText(html, "html"))
+                    body = MIMEMultipart("alternative")
+                    body.attach(MIMEText(text, "plain"))
+                    body.attach(MIMEText(html, "html"))
+                    msg.attach(body)
+                    attachment = MIMEApplication(pdf, _subtype="pdf")
+                    attachment.add_header(
+                        "Content-Disposition",
+                        "attachment",
+                        filename=f"StandardSphere_Digest_{slot_key}.pdf",
+                    )
+                    msg.attach(attachment)
                     await client.send_message(msg)
                     success += 1
                 except Exception as e:  # noqa: BLE001 — one bad recipient must not stop the rest

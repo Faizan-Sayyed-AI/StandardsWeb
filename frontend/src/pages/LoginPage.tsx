@@ -1,14 +1,23 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+// Only same-app absolute paths are allowed as a post-login target, so the
+// redirect can never be used to send someone to another site.
+function safeRedirectTarget(from: unknown): string {
+  if (typeof from !== "string") return "/dashboard";
+  if (!from.startsWith("/") || from.startsWith("//") || from.startsWith("/login")) return "/dashboard";
+  return from;
+}
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +30,7 @@ export function LoginPage() {
     setIsLoading(true);
     try {
       await login(email, password);
-      navigate("/dashboard");
+      navigate(safeRedirectTarget((location.state as { from?: unknown } | null)?.from), { replace: true });
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??

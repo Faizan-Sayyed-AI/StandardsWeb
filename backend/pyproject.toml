@@ -36,6 +36,10 @@ dependencies = [
     # Email (M5 — aiosmtplib used in Celery tasks)
     "aiosmtplib==3.0.*",
 
+    # Weekly digest PDF attachment (pure Python, no system packages)
+    "reportlab>=4.2,<5",
+    "tzdata",
+
     # Security
     "passlib[bcrypt]==1.7.*",
     "python-jose[cryptography]==3.3.*",

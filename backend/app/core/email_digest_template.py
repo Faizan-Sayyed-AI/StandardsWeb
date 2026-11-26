@@ -21,7 +21,8 @@ SECTION_ORDER: list[tuple[str, str]] = [
     ("purchased", "Purchased"),
 ]
 
-MAX_PER_SECTION = 25
+# The email body is a short preview; the attached PDF lists everything.
+MAX_PER_SECTION = 5
 
 
 @dataclass
@@ -31,6 +32,8 @@ class DigestItem:
     title: str
     status: str
     count: int  # how many times this event hit this standard in the period
+    edition: str = ""
+    committee: str = ""
 
 
 @dataclass
@@ -81,11 +84,11 @@ def render_digest(
         if hidden:
             rows += (
                 '<tr><td style="padding:10px 0;color:#64748b;font-size:13px;">'
-                f"...and {hidden} more. "
-                f'<a href="{escape(base)}/standards" style="color:#0f766e;">View all in the dashboard</a>'
+                f"...and {hidden} more in the attached PDF. "
+                f'<a href="{escape(base)}/standards" style="color:#0f766e;">Open the dashboard</a>'
                 "</td></tr>"
             )
-            lines.append(f"  ...and {hidden} more: {base}/standards")
+            lines.append(f"  ...and {hidden} more in the attached PDF: {base}/standards")
 
         html_sections.append(
             '<h3 style="font-size:15px;color:#0f172a;margin:28px 0 4px 0;">'
@@ -105,7 +108,7 @@ def render_digest(
 <p style="color:#ccfbf1;font-size:14px;margin:8px 0 0 0;">Weekly standards digest &middot; {escape(period_label)}</p></td></tr>
 <tr><td style="padding:32px;">
 <p style="font-size:16px;margin-top:0;">Hello {escape(recipient_name)},</p>
-<p style="font-size:15px;color:#334155;">{total} standard{'s' if total != 1 else ''} had updates since the last digest.</p>
+<p style="font-size:15px;color:#334155;">{total} standard{'s' if total != 1 else ''} had updates since the last digest. The full report with a link to every standard is attached as a PDF.</p>
 {''.join(html_sections)}
 <p style="margin-top:32px;text-align:center;"><a href="{escape(base)}" style="background-color:#0d9488;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;display:inline-block;">Open dashboard</a></p>
 </td></tr>
@@ -116,7 +119,7 @@ def render_digest(
     text = (
         f"Hello {recipient_name},\n\n"
         f"StandardSphere weekly digest ({period_label}) - {total} standard"
-        f"{'s' if total != 1 else ''} had updates.\n\n"
+        f"{'s' if total != 1 else ''} had updates. The full report is attached as a PDF.\n\n"
         + "\n\n".join(text_sections)
         + f"\n\nDashboard: {base}\n\n--\nAutomated digest from StandardSphere.\n"
     )

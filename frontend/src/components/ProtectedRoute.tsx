@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireAdmin, requireManager }: ProtectedRouteProps) {
   const { isAuthenticated, isAdmin, isManager, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -24,7 +25,15 @@ export function ProtectedRoute({ children, requireAdmin, requireManager }: Prote
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Remember where the user was heading (e.g. a link from the weekly digest
+    // email) so the login page can send them back there afterwards.
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    );
   }
 
   if (requireAdmin && !isAdmin) {

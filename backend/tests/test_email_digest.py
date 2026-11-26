@@ -71,5 +71,22 @@ def test_render_caps_long_sections():
         period_label="p",
     )
     assert total == MAX_PER_SECTION + 7
-    assert "and 7 more" in html
-    assert "and 7 more" in text
+    assert "and 7 more in the attached PDF" in html
+    assert "and 7 more in the attached PDF" in text
+
+
+def test_pdf_has_clickable_links_and_lists_everything():
+    from app.core.email_digest_pdf import build_digest_pdf
+
+    items = [_item(i) for i in range(MAX_PER_SECTION + 7)]
+    pdf = build_digest_pdf(
+        recipient_name="Ann",
+        sections=[DigestSection("updated", "Updated", items)],
+        frontend_url="https://example.test/",
+        period_label="26 Nov 2026",
+    )
+    assert pdf.startswith(b"%PDF")
+    # link annotations point at the app (uncompressed URIs appear in the annots)
+    assert b"https://example.test/standards/id-0" in pdf
+    assert f"https://example.test/standards/id-{MAX_PER_SECTION + 6}".encode() in pdf  # no cap
+    assert b"example.test//" not in pdf
