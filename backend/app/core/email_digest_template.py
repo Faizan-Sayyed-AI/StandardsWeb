@@ -70,11 +70,11 @@ def render_digest(
             url = f"{base}/standards/{it.standard_id}"
             times = f" &middot; {it.count} changes" if it.count > 1 else ""
             rows += (
-                '<tr><td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">'
-                f'<a href="{escape(url)}" style="color:#0f766e;font-weight:600;text-decoration:none;">'
+                '<tr><td style="padding:10px 12px;border-bottom:1px solid #d9dce3;">'
+                f'<a href="{escape(url)}" style="color:#2557a7;font-weight:600;text-decoration:none;">'
                 f"{escape(it.iso_reference)}</a>"
-                f'<span style="color:#64748b;font-size:12px;"> &middot; {escape(it.status)}{times}</span>'
-                f'<div style="color:#334155;font-size:14px;margin-top:2px;">{escape(it.title)}</div>'
+                f'<span style="color:#5a6272;font-size:12px;"> &middot; {escape(it.status)}{times}</span>'
+                f'<div style="color:#131825;font-size:14px;margin-top:2px;">{escape(it.title)}</div>'
                 "</td></tr>"
             )
             lines.append(
@@ -83,37 +83,38 @@ def render_digest(
             )
         if hidden:
             rows += (
-                '<tr><td style="padding:10px 0;color:#64748b;font-size:13px;">'
+                '<tr><td style="padding:10px 12px;color:#5a6272;font-size:13px;">'
                 f"...and {hidden} more in the attached PDF. "
-                f'<a href="{escape(base)}/standards" style="color:#0f766e;">Open the dashboard</a>'
+                f'<a href="{escape(base)}/standards" style="color:#2557a7;">Open the dashboard</a>'
                 "</td></tr>"
             )
             lines.append(f"  ...and {hidden} more in the attached PDF: {base}/standards")
 
         html_sections.append(
-            '<h3 style="font-size:15px;color:#0f172a;margin:28px 0 4px 0;">'
-            f'{escape(sec.label)} <span style="color:#64748b;font-weight:500;">({len(sec.items)})</span></h3>'
-            f'<table width="100%" border="0" cellspacing="0" cellpadding="0">{rows}</table>'
+            '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top:24px;">'
+            '<tr><td style="background-color:#efcb48;padding:9px 12px;font-size:14px;font-weight:700;color:#131825;">'
+            f'{escape(sec.label)} <span style="font-weight:500;">({len(sec.items)})</span></td></tr>'
+            f'{rows}</table>'
         )
         text_sections.append(f"{sec.label} ({len(sec.items)})\n" + "\n".join(lines))
 
     html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>StandardSphere weekly digest</title></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f8fafc;color:#1e293b;">
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f8fafc;padding:40px 20px;"><tr><td align="center">
-<table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;">
-<tr><td style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 100%);padding:28px 32px;text-align:center;">
-<h1 style="color:#ffffff;font-size:22px;margin:0;">StandardSphere</h1>
-<p style="color:#ccfbf1;font-size:14px;margin:8px 0 0 0;">Weekly standards digest &middot; {escape(period_label)}</p></td></tr>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#fcfcfc;color:#131825;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#fcfcfc;padding:40px 20px;"><tr><td align="center">
+<table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color:#ffffff;border:1px solid #d9dce3;border-top:6px solid #efcb48;">
+<tr><td style="padding:28px 32px 0 32px;">
+<h1 style="color:#131825;font-size:22px;margin:0;">StandardSphere</h1>
+<p style="color:#5a6272;font-size:14px;margin:6px 0 0 0;">Weekly standards digest &middot; {escape(period_label)}</p></td></tr>
 <tr><td style="padding:32px;">
 <p style="font-size:16px;margin-top:0;">Hello {escape(recipient_name)},</p>
-<p style="font-size:15px;color:#334155;">{total} standard{'s' if total != 1 else ''} had updates since the last digest. The full report with a link to every standard is attached as a PDF.</p>
+<p style="font-size:15px;color:#131825;">{total} standard{'s' if total != 1 else ''} had updates since the last digest. The full report with a link to every standard is attached as a PDF.</p>
 {''.join(html_sections)}
-<p style="margin-top:32px;text-align:center;"><a href="{escape(base)}" style="background-color:#0d9488;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;display:inline-block;">Open dashboard</a></p>
+<p style="margin-top:32px;text-align:center;"><a href="{escape(base)}" style="background-color:#efcb48;color:#131825;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;display:inline-block;">Open dashboard</a></p>
 </td></tr>
-<tr><td style="background-color:#f8fafc;padding:20px;text-align:center;border-top:1px solid #f1f5f9;">
-<p style="font-size:12px;color:#94a3b8;margin:0;">Automated digest from StandardSphere. You receive it because your email is mapped to these lifecycle events.</p>
+<tr><td style="background-color:#f0f1f5;padding:20px;text-align:center;border-top:1px solid #d9dce3;">
+<p style="font-size:12px;color:#5a6272;margin:0;">Automated digest from StandardSphere. You receive it because your email is mapped to these lifecycle events.</p>
 </td></tr></table></td></tr></table></body></html>"""
 
     text = (

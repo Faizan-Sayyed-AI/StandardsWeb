@@ -64,10 +64,10 @@ def build_digest_pdf(
 
     story = []
     if LOGO_PATH.exists():
-        logo = Image(str(LOGO_PATH), width=48 * mm, height=48 * mm * 62 / 282)
+        logo = Image(str(LOGO_PATH), width=50 * mm, height=50 * mm * 191 / 1255, mask="auto")
         logo.hAlign = "LEFT"
         story += [logo, Spacer(1, 6)]
-    rule = Table([[""]], colWidths=[258 * mm], rowHeights=[1.6 * mm])
+    rule = Table([[""]], colWidths=[258 * mm], rowHeights=[1.6 * mm], hAlign="LEFT")
     rule.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), GOLD)]))
     story += [
         rule,
